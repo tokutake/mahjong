@@ -206,12 +206,32 @@ function y_isPinfu(groups: Group[], tiles: Tile[]): boolean {
   return true;
 }
 
-function y_isIipeikou(groups: Group[]): boolean {
+function y_isIipeikou(groups: Group[], tiles: Tile[]): boolean {
   if (!y_isMenzenDefault()) return false;
-  // 一盃口: 同一順子が1組重なっていることを最低限検出する
-  // 簡易実装: chi が2組以上あるケースは既に満たす（詳細な同一順子判定は省略）
-  const chiCount = groups.filter((g) => g.type === 'chi').length;
-  return chiCount >= 2;
+
+  // 面前前提の一盃口: 同一スートで同一の順子が2組存在するかを、牌配列から直接数える
+  const suits: Suit[] = ['m', 'p', 's'];
+  for (const suit of suits) {
+    // スートごとの枚数カウント
+    const counts = new Map<number, number>();
+    for (const t of tiles) {
+      if (t.suit !== suit) continue;
+      counts.set(t.number, (counts.get(t.number) ?? 0) + 1);
+    }
+    // 開始番号1..7について、その順子がいくつ作れるか = 3枚の最小枚数
+    for (let start = 1; start <= 7; start++) {
+      const c =
+        Math.min(
+          counts.get(start) ?? 0,
+          counts.get(start + 1) ?? 0,
+          counts.get(start + 2) ?? 0
+        );
+      if (c >= 2) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function y_isIttsuu(tiles: Tile[]): boolean {
@@ -286,11 +306,11 @@ export function calcYaku(tiles: { suit: 'm' | 'p' | 's' | 'z'; number: number }[
     return { yaku: [], han: 0, yakuman: false };
   }
   const groups = decomp.groups;
- 
+
   const yaku: string[] = [];
   if (y_isPinfu(groups as any, hand as any)) yaku.push('平和');
   if (y_allSimples(hand as any)) yaku.push('断么九');
-  if (y_isIipeikou(groups as any)) yaku.push('一盃口');
+  if (y_isIipeikou(groups as any, hand as any)) yaku.push('一盃口');
   if (y_isIttsuu(hand as any)) yaku.push('一気通貫');
   if (y_isToitoi(groups as any)) yaku.push('対々和');
   if (y_isSananko(groups as any)) yaku.push('三暗刻');
