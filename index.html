@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>麻雀ゲーム</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <h1>麻雀ゲーム</h1>
+        <div class="game-info">
+            <div class="player-info">
+                <span>プレイヤー: <span id="current-player">東</span></span>
+                <span>残り牌: <span id="remaining-tiles">70</span></span>
+            </div>
+        </div>
+        <canvas id="game-canvas" width="1200" height="800"></canvas>
+        <div class="controls">
+            <button id="new-game">新しいゲーム</button>
+            <button id="sort-hand">手牌整理</button>
+        </div>
+    </div>
+    <script type="module" src="main.js"></script>
+</body>
+</html>

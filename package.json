@@ -1,0 +1,26 @@
+{
+  "name": "mahjong-game",
+  "version": "1.0.0",
+  "description": "A simple mahjong game implemented in HTML5 Canvas and JavaScript",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "mahjong",
+    "game",
+    "javascript",
+    "html5"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vite": "^7.0.6"
+  }
+}
