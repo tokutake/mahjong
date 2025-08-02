@@ -73,6 +73,33 @@ export type CalcYakuFn = (tiles: Tile[]) => CalcYakuResult;
 
 type HitRect = { x: number; y: number; w: number; h: number; player: Player };
 
+class InputMapper {
+    private regions: Map<number, HitRect> = new Map();
+    private priority: number[] = [];
+
+    setHitRegions(regions: Map<number, HitRect>): void {
+        this.regions = new Map(regions);
+    }
+
+    setPriority(idsInOrder: number[]): void {
+        this.priority = idsInOrder.slice();
+    }
+
+    pick(x: number, y: number, filter?: (id: number) => boolean): number | null {
+        // 優先度順があればそれに従い、無ければ regions の挿入順（描画順に依存しないようにしつつ安定）
+        const ids = this.priority.length > 0 ? this.priority : Array.from(this.regions.keys());
+        for (const id of ids) {
+            const rect = this.regions.get(id);
+            if (!rect) continue;
+            if (filter && !filter(id)) continue;
+            if (x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h) {
+                return id;
+            }
+        }
+        return null;
+    }
+}
+
 class MahjongRenderer {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
@@ -181,6 +208,7 @@ export class MahjongGame {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
     renderer: MahjongRenderer;
+    inputMapper: InputMapper;
     tiles: Tile[];
     playerHands: [Tile[], Tile[], Tile[], Tile[]];
     discardPiles: [Tile[], Tile[], Tile[], Tile[]];
@@ -209,6 +237,8 @@ export class MahjongGame {
 
         // Rendererを初期化（描画とヒットマップ管理を委譲）
         this.renderer = new MahjongRenderer(this.canvas);
+        // 入力マッパー（表示順に依存しない座標→ID逆引き）
+        this.inputMapper = new InputMapper();
 
         this.tiles = [];
         this.playerHands = [[], [], [], []];
@@ -394,6 +424,12 @@ export class MahjongGame {
         this.renderer.drawDiscardPiles(this.discardPiles);
         this.renderer.drawInfo(this.wall.length, this.wallIndex, this.currentPlayer);
         this.drawYakuInfo();
+
+        // ヒット領域を入力マッパーに同期（描画順から独立して利用）
+        this.inputMapper.setHitRegions(this.renderer.hitMap);
+        // 優先度: 自家の牌のみ対象、かつ右端（ツモ牌）を最優先にする例
+        const handIds = this.getHandWithFixedDraw(0 as Player).map(t => t.id);
+        this.inputMapper.setPriority(handIds.slice().reverse());
     }
 
     drawYakuInfo(): void {
@@ -412,8 +448,18 @@ export class MahjongGame {
             const rect = this.canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            
-            this.handleTileClick(x, y);
+
+            // 表示順から独立した逆引き（自家14枚時のみ有効）
+            const clickedId = this.inputMapper.pick(x, y, (id) => {
+                const r = this.renderer.hitMap.get(id);
+                if (!r) return false;
+                if (r.player !== 0) return false;
+                // 打牌は14枚時のみ許可
+                return this.playerHands[0 as Player].length === 14;
+            });
+            if (clickedId != null) {
+                this.handleTileIdClick(clickedId);
+            }
         });
 
         const newGameBtn = document.getElementById('new-game');
@@ -445,25 +491,11 @@ export class MahjongGame {
         });
     }
 
-    handleTileClick(x: number, y: number): void {
+    // クリック座標依存のロジックを排除し、IDベースで処理
+    handleTileIdClick(clickedId: number): void {
         if (this.currentPlayer !== 0) return;
+        if (this.playerHands[0 as Player].length !== 14) return;
 
-        // 打牌は必ず14枚時のみ許可
-        const hand = this.playerHands[0 as Player];
-        if (!hand || hand.length !== 14) return;
-
-        // ヒットマップから座標に一致する牌IDを逆引き
-        let clickedId: number | null = null;
-        for (const [id, rect] of this.renderer.hitMap.entries()) {
-            if (rect.player !== 0) continue; // 自家のみ反応
-            if (x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h) {
-                clickedId = id;
-                break;
-            }
-        }
-        if (clickedId == null) return;
-
-        // 牌IDから実インデックスを求めて打牌
         const realIndex = this.playerHands[0 as Player].findIndex(t => t.id === clickedId);
         if (realIndex < 0) return;
 
