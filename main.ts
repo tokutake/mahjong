@@ -1,10 +1,10 @@
 // ES Modules entry point
 
-import { calcYaku, YAKU_LIST } from './yaku.js';
-import { MahjongGame } from './mahjong.js';
+import { calcYaku, YAKU_LIST } from './yaku';
+import { MahjongGame } from './mahjong';
 
-// Bootstrap
+// 依存注入でwindow依存を排除（MahjongGameへ渡す）
 window.addEventListener('load', () => {
-  // If MahjongGame expects no args, just instantiate.
-  new MahjongGame();
+  const game = new MahjongGame({ calcYaku, yakuList: YAKU_LIST });
+  // void game; // 将来のデバッグ用途で参照
 });
