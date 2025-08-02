@@ -71,6 +71,11 @@ export class GameController {
     switch (next) {
       case 'HumanTurn_Draw': {
         const perform = () => {
+          // 王牌14枚を残して山切れなら流局へ
+          if (this.state.isExhaustiveDraw()) {
+            this.handleExhaustiveDraw();
+            return;
+          }
           const t = this.state.drawTile();
           if (t) {
             this.state.playerHands[0 as Player].push(t);
@@ -96,6 +101,10 @@ export class GameController {
           if (this.state.currentPlayer === (0 as Player)) {
             // ガード：人手番になっていたら人間のツモへ
             this.enterPhase('HumanTurn_Draw');
+            return;
+          }
+          if (this.state.isExhaustiveDraw()) {
+            this.handleExhaustiveDraw();
             return;
           }
           const t = this.state.drawTile();
@@ -169,9 +178,14 @@ export class GameController {
 
   newGame(): void {
     this.state.newGame();
-    this.state.currentPlayer = 0 as Player;
-    // 人間は配牌時点で14枚（draw済）なので捨て待ちから開始
-    this.enterPhase('HumanTurn_DiscardWait');
+    // 親番に応じて開始フェーズを分岐
+    if (this.state.currentPlayer === (0 as Player)) {
+      // 親（あなた）が14枚のはず。配牌後は打牌待ち
+      this.enterPhase('HumanTurn_DiscardWait');
+    } else {
+      // 他家が親の場合、AI のツモから開始
+      this.enterPhase('AITurn_Draw');
+    }
   }
 
   sortMyHand(): void {
@@ -225,8 +239,24 @@ export class GameController {
       this.renderer.drawYaku(res, this.yakuList);
     }
     this.renderer.updateInfo(this.state.wall.length - this.state.wallIndex, this.state.currentPlayer);
+    // TODO: ドラ表示や場情報の描画は main.ts 側のrenderer拡張で行う
 
     const ids = this.state.getHandWithFixedDraw(0 as Player).map(t => t.id).slice().reverse();
     this.renderer.setHitRegions(this.state.hitMap, ids);
+  }
+
+  // 山切れ流局（不聴/聴牌処理は簡易: まだ未実装なので親流れ、本場加算の骨格のみ）
+  private handleExhaustiveDraw(): void {
+    // 簡易：親不変条件（親聴牌）は未判定のため、親流れとする
+    // 厳密化タスクの一部として、聴牌判定と連荘条件を今後実装
+    // ここでは局を終了させ、次局の準備だけ行う
+    // 本場は+1（簡易仕様）
+    this.state.honba += 1;
+
+    // 親を移動（簡易: 常に移動。将来は親聴牌/和了で連荘）
+    this.state.dealer = ((this.state.dealer + 1) % 4) as Player;
+
+    // 次局開始
+    this.newGame();
   }
 }

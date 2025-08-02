@@ -84,9 +84,27 @@ window.addEventListener('load', () => {
       ctx.fillStyle = '#000';
       ctx.font = '16px Arial';
       ctx.textAlign = 'left';
-      ctx.fillText(`残り牌: ${s.wall.length - s.wallIndex}`, 20, 30);
+      // 基本情報
+      ctx.fillText(`残り牌(山): ${s.wall.length - s.wallIndex}`, 20, 30);
       const playerNames = ['東（あなた）', '南', '西', '北'] as const;
       ctx.fillText(`現在のプレイヤー: ${playerNames[s.currentPlayer]}`, 20, 50);
+
+      // 場情報（ドラ/本場/供託/親/場風）
+      const winds = ['東', '南', '西', '北'] as const;
+      ctx.fillText(`場風: ${winds[s.roundWind]}`, 20, 70);
+      ctx.fillText(`親: ${playerNames[s.dealer]}`, 20, 90);
+      ctx.fillText(`本場: ${s.honba}`, 20, 110);
+      ctx.fillText(`供託: ${s.kyoutaku}`, 20, 130);
+
+      // ドラ表示（指示牌と有効ドラ）
+      const ind = s.doraIndicators[0];
+      const ura = s.uraIndicators[0];
+      const doraTiles = s.listActiveDora?.() ?? [];
+      const doraStr = doraTiles.map(t => t.unicode).join(' ');
+      const indStr = ind ? ind.unicode : '—';
+      const uraStr = ura ? ura.unicode : '—';
+      ctx.fillText(`ドラ表示: ${indStr} / 裏ドラ表示: ${uraStr}`, 20, 150);
+      ctx.fillText(`有効ドラ: ${doraStr || 'なし'}`, 20, 170);
     },
     drawYaku(result: { yaku: string[]; han: number; yakuman: boolean }) {
       ctx.fillStyle = '#000';
@@ -121,6 +139,7 @@ window.addEventListener('load', () => {
       if (remainEl) remainEl.textContent = String(remain);
       const curEl = document.getElementById('current-player');
       if (curEl) curEl.textContent = (['東', '南', '西', '北'] as const)[currentPlayer as 0|1|2|3];
+      // 場情報はキャンバスに描画済み
     },
     setHitRegions(_hit: Map<number, any>, priority: number[]) {
       // state に同期
