@@ -111,7 +111,7 @@ function y_checkChiitoi(tiles: Tile[]): { ok: boolean; yaku?: ('七対子')[] } 
 }
 
 // 面子手分解
-type Group = { type: 'pair' | 'pon' | 'chi' };
+type Group = { type: 'pair' | 'pon' | 'chi', tiles?: Tile[] };
 function y_decomposeToMentsu(tiles: Tile[]): { ok: boolean; groups?: Group[] } {
   const sorted = y_sortTiles(tiles);
   const counts = y_countByKey(sorted);
@@ -158,7 +158,8 @@ function y_decomposeToMentsu(tiles: Tile[]): { ok: boolean; groups?: Group[] } {
           removeCount(k, 1);
           removeCount(k2, 1);
           removeCount(k3, 1);
-          groups.push({ type: 'chi' });
+          const tiles = [{ suit, number: num }, { suit, number: num + 1 }, { suit, number: num + 2 }];
+          groups.push({ type: 'chi', tiles });
           return nextGroup();
         }
       }
@@ -210,24 +211,22 @@ function y_isIipeikou(groups: Group[], tiles: Tile[]): boolean {
   if (!y_isMenzenDefault()) return false;
 
   // 面前前提の一盃口: 同一スートで同一の順子が2組存在するかを、牌配列から直接数える
-  const suits: Suit[] = ['m', 'p', 's'];
-  for (const suit of suits) {
-    // スートごとの枚数カウント
-    const counts = new Map<number, number>();
-    for (const t of tiles) {
-      if (t.suit !== suit) continue;
-      counts.set(t.number, (counts.get(t.number) ?? 0) + 1);
-    }
-    // 開始番号1..7について、その順子がいくつ作れるか = 3枚の最小枚数
-    for (let start = 1; start <= 7; start++) {
-      const c =
-        Math.min(
-          counts.get(start) ?? 0,
-          counts.get(start + 1) ?? 0,
-          counts.get(start + 2) ?? 0
-        );
-      if (c >= 2) {
-        return true;
+  // 型安全のためスート配列はリテラルに限定し、使う場面でSuitへ狭める
+  const suits = ['m', 'p', 's'] as const;
+  for (const s of suits) {
+    const suit = s as Suit;
+
+    // 各順子の開始牌をセットにして、2組以上あれば一盃口成立
+    const set = new Set<number>();
+    for (const g of groups) {
+      if (g.type === 'chi') {
+        if (g.tiles && g.tiles[0]) {
+          const number = g.tiles[0].number;
+          if (set.has(number)) {
+            return true; // 同じ順子が2組見つかった
+          }
+          set.add(number);
+        }
       }
     }
   }

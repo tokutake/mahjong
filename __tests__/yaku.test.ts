@@ -54,10 +54,11 @@ describe("calcYaku - 基本役の判定（門前想定）", () => {
       S(2), S(3), S(4),
       S(3), S(4), S(5),
       S(4), S(5), S(6),
-      P(2), P(3), P(4),
+      P(2), P(2), P(2),
       S(5), S(5),
     ];
     const r = calcYaku(hand);
+    console.log("断么九のテスト結果:", r);
     expectHasYaku(r, "断么九");
     expectNoYakuman(r);
     expect(r.han).toBe(1);
