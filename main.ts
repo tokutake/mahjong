@@ -142,6 +142,4 @@ window.addEventListener('load', () => {
   const newGameBtn = document.getElementById('new-game');
   newGameBtn?.addEventListener('click', () => controller.newGame());
 
-  const sortBtn = document.getElementById('sort-hand');
-  sortBtn?.addEventListener('click', () => controller.sortMyHand());
 });
