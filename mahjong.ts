@@ -176,7 +176,7 @@ class MahjongRenderer {
 }
 
 export class MahjongGame {
-    calcYaku?: CalcYakuFn;
+    calcYaku: CalcYakuFn;
     yakuList?: Record<string, { han?: number; yakuman?: boolean }>;
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
@@ -194,9 +194,9 @@ export class MahjongGame {
     /**
      * 依存注入で役判定を受け取る（将来テストもしやすくする）
      */
-    constructor(opts?: { calcYaku?: CalcYakuFn; yakuList?: Record<string, { han?: number; yakuman?: boolean }> }) {
-        this.calcYaku = opts?.calcYaku ?? (window as any)?.calcYaku;
-        this.yakuList = opts?.yakuList ?? (window as any)?.YAKU_LIST;
+    constructor(opts: { calcYaku: CalcYakuFn; yakuList: Record<string, { han?: number; yakuman?: boolean }> }) {
+        this.calcYaku = opts.calcYaku;
+        this.yakuList = opts.yakuList;
 
 
         const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
