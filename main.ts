@@ -7,7 +7,6 @@ import { GameController } from './controller/gameController';
 // Controller/State 分離構成へ移行
 window.addEventListener('load', () => {
   const state = new GameState();
-  state.newGame();
 
   // Renderer のポート実装（既存 mahjong.ts の描画器を薄いアダプタで利用する）
   const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
@@ -135,6 +134,9 @@ window.addEventListener('load', () => {
     calcYaku: calcYaku as any,
     yakuList: YAKU_LIST as any
   });
+
+  // 初期化一元化: 初回の初期化もコントローラ経由に統一
+  controller.newGame();
 
   // UI ボタン
   const newGameBtn = document.getElementById('new-game');
