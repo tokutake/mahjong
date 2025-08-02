@@ -25,6 +25,10 @@ export class GameController {
   private yakuList: Record<string, { han?: number; yakuman?: boolean }>;
   // Humanのツモ後に和了可能な判定結果を保持（ボタン制御用）
   private pendingHumanTsumoWin: { yaku: string[]; han: number; yakuman: boolean } | null = null;
+  // 簡易点数計算結果（和了可時のプレビュー用）
+  private pendingHumanScore: import('../score').ScoreBreakdown | null = null;
+  // ブラウザ向けに score モジュールを動的 import（Node の require は使わない）
+  private loadScoreModule = async () => await import('../score');
 
   // ステートマシン定義
   private phase: GamePhase = 'Idle';
@@ -90,9 +94,15 @@ export class GameController {
           const winBtn = document.getElementById('win-button') as HTMLButtonElement | null;
           if (isWinPossible && winBtn) {
             this.pendingHumanTsumoWin = res;
+
+            // ツモ前提の簡易点数プレビューを計算
+            // 動的importは非同期なので、プレビューは syncRender で描く（ここでは保持のみ）
+            this.pendingHumanScore = null;
+
             winBtn.style.display = 'inline-block';
           } else {
             this.pendingHumanTsumoWin = null;
+            this.pendingHumanScore = null;
             if (winBtn) winBtn.style.display = 'none';
           }
 
@@ -197,15 +207,56 @@ export class GameController {
     // 「アガリ」ボタンのバインド
     const winBtn = document.getElementById('win-button') as HTMLButtonElement | null;
     if (winBtn) {
-      winBtn.addEventListener('click', () => {
+      winBtn.addEventListener('click', async () => {
         if (!this.pendingHumanTsumoWin) return;
-        // 結果を描画して終了
+
+        // 簡易: ツモ和了として点数計算（動的import）
+        const { calcScore } = await this.loadScoreModule();
+        const tiles = this.state.playerHands[0 as Player].map(t => ({ suit: t.suit, number: t.number }));
+        const score = calcScore({
+          tiles,
+          yakuResult: this.pendingHumanTsumoWin,
+          dealer: this.state.dealer === (0 as Player),
+          winType: 'tsumo'
+        });
+
+        // 画面描画（役と点数の概要）
         this.syncRender();
         this.renderer.drawYaku(this.pendingHumanTsumoWin, this.yakuList);
+        // 追加で点数概要も表示（キャンバス右側）
+        const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
+        const ctx = canvas?.getContext('2d');
+        if (canvas && ctx) {
+          ctx.fillStyle = '#000';
+          ctx.font = '16px Arial';
+          let x = 900;
+          let y = 220;
+          ctx.fillText('点数', x, y);
+          y += 22;
+          ctx.fillText(`符: ${score.fu}符 / 翻: ${score.han}翻`, x, y); y += 20;
+          ctx.fillText(`上限: ${score.limit === 'none' ? '—' : score.limit}`, x, y); y += 20;
+          if (this.state.dealer === (0 as Player)) {
+            // 親
+            if (score.payments.tsumoChild != null) {
+              ctx.fillText(`親ツモ: 子×3 = ${score.payments.tsumoChild}点 × 3`, x, y); y += 20;
+            } else if (score.payments.ron != null) {
+              ctx.fillText(`親ロン: ${score.payments.ron}点`, x, y); y += 20;
+            }
+          } else {
+            // 子
+            if (score.payments.tsumoParent != null && score.payments.tsumoChild != null) {
+              ctx.fillText(`子ツモ: 親 ${score.payments.tsumoParent}点 / 子 ${score.payments.tsumoChild}点`, x, y); y += 20;
+            } else if (score.payments.ron != null) {
+              ctx.fillText(`子ロン: ${score.payments.ron}点`, x, y); y += 20;
+            }
+          }
+        }
+
         this.enterPhase('GameOver');
         // ボタンを隠す
-        winBtn.style.display = 'none';
+        if (winBtn) winBtn.style.display = 'none';
         this.pendingHumanTsumoWin = null;
+        this.pendingHumanScore = null;
       });
     }
 
@@ -249,9 +300,10 @@ export class GameController {
     if (!tile) return;
 
     // Humanが打牌する場合は、アガリ中断
-    const winBtn = document.getElementById('win-button') as HTMLButtonElement | null;
-    if (winBtn) winBtn.style.display = 'none';
-    this.pendingHumanTsumoWin = null;
+          const winBtn = document.getElementById('win-button') as HTMLButtonElement | null;
+          if (winBtn) winBtn.style.display = 'none';
+          this.pendingHumanTsumoWin = null;
+          this.pendingHumanScore = null;
 
     // 捨て
     hand0.splice(tileIndex, 1);
@@ -278,6 +330,44 @@ export class GameController {
       // yaku.ts の calcYaku は構造互換の牌配列を受け取ればよい想定のため、型を明示的に合わせる
       const res = this.calcYaku(this.state.playerHands[0 as Player] as unknown as any[]);
       this.renderer.drawYaku(res, this.yakuList);
+
+      // 点数プレビュー（アガリ可能時のみ）
+      if (res && (res.han > 0 || res.yakuman)) {
+        // 非同期 import をここで実行し、プレビュー描画
+        (async () => {
+          try {
+            const { calcScore } = await this.loadScoreModule();
+            const tiles = this.state.playerHands[0 as Player].map(t => ({ suit: t.suit, number: t.number }));
+            const preview = calcScore({
+              tiles,
+              yakuResult: res,
+              dealer: this.state.dealer === (0 as Player),
+              winType: 'tsumo' // プレビューはツモ前提
+            });
+            const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
+            const ctx = canvas?.getContext('2d');
+            if (canvas && ctx) {
+              ctx.fillStyle = '#000';
+              ctx.font = '14px Arial';
+              let x = 900;
+              let y = 250;
+              ctx.fillText(`[プレビュー] 符:${preview.fu} / 翻:${preview.han} / ${preview.limit === 'none' ? '—' : preview.limit}`, x, y);
+              y += 18;
+              if (this.state.dealer === (0 as Player)) {
+                if (preview.payments.tsumoChild != null) {
+                  ctx.fillText(`親ツモ見込: 子×3 = ${preview.payments.tsumoChild}点`, x, y);
+                }
+              } else {
+                if (preview.payments.tsumoParent != null && preview.payments.tsumoChild != null) {
+                  ctx.fillText(`子ツモ見込: 親 ${preview.payments.tsumoParent} / 子 ${preview.payments.tsumoChild}`, x, y);
+                }
+              }
+            }
+          } catch {
+            // no-op
+          }
+        })();
+      }
     }
     this.renderer.updateInfo(this.state.wall.length - this.state.wallIndex, this.state.currentPlayer);
     // TODO: ドラ表示や場情報の描画は main.ts 側のrenderer拡張で行う
