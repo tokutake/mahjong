@@ -89,6 +89,16 @@ window.addEventListener('load', () => {
       const playerNames = ['東（あなた）', '南', '西', '北'] as const;
       ctx.fillText(`現在のプレイヤー: ${playerNames[s.currentPlayer]}`, 20, 50);
 
+      // スコア表示
+      const scoreBaseY = 190;
+      const scoreLineH = 20;
+      ctx.fillText('点数', 20, scoreBaseY);
+      const scoreNames = ['東(自分)', '南', '西', '北'] as const;
+      s.scores.forEach((sc, i) => {
+        const mark = i === s.dealer ? ' 親' : '';
+        ctx.fillText(`${scoreNames[i as 0|1|2|3]}${mark}: ${sc.toLocaleString()} 点`, 20, scoreBaseY + scoreLineH * (i + 1));
+      });
+
       // 場情報（ドラ/本場/供託/親/場風）
       const winds = ['東', '南', '西', '北'] as const;
       ctx.fillText(`場風: ${winds[s.roundWind]}`, 20, 70);

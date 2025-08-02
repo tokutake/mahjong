@@ -76,6 +76,9 @@ export class GameState {
   playerHands: [Tile[], Tile[], Tile[], Tile[]] = [[], [], [], []];
   discardPiles: [Tile[], Tile[], Tile[], Tile[]] = [[], [], [], []];
 
+  // スコア
+  scores: [number, number, number, number] = [25000, 25000, 25000, 25000];
+
   // 山と王牌
   wall: Tile[] = [];
   wallIndex = 0; // = liveWallStart + drawsConsumed
@@ -102,6 +105,8 @@ export class GameState {
     // 局開始初期化（場は維持）
     this.playerHands = [[], [], [], []];
     this.discardPiles = [[], [], [], []];
+    // スコアは半荘継続想定のため維持（東場/南場を跨いでも保持）
+    // 必要なら場がリセットされる別APIで初期化する
     this.wall = [];
     this.deadWall = [];
     this.doraIndicators = [];
