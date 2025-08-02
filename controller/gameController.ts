@@ -23,6 +23,8 @@ export class GameController {
   private renderer: RenderPorts;
   private calcYaku: CalcYakuFn;
   private yakuList: Record<string, { han?: number; yakuman?: boolean }>;
+  // Humanのツモ後に和了可能な判定結果を保持（ボタン制御用）
+  private pendingHumanTsumoWin: { yaku: string[]; han: number; yakuman: boolean } | null = null;
 
   // ステートマシン定義
   private phase: GamePhase = 'Idle';
@@ -81,6 +83,19 @@ export class GameController {
             this.state.playerHands[0 as Player].push(t);
             this.state.sortHand(0 as Player);
           }
+          // Humanのツモ直後に役判定（簡易: 門前想定）
+          const res = this.calcYaku(this.state.playerHands[0 as Player] as unknown as any[]);
+          // 表示用には通常のcalc（既存）を用いる。アガリ可否だけここで判定
+          const isWinPossible = res && (res.han > 0 || res.yakuman);
+          const winBtn = document.getElementById('win-button') as HTMLButtonElement | null;
+          if (isWinPossible && winBtn) {
+            this.pendingHumanTsumoWin = res;
+            winBtn.style.display = 'inline-block';
+          } else {
+            this.pendingHumanTsumoWin = null;
+            if (winBtn) winBtn.style.display = 'none';
+          }
+
           this.syncRender();
           this.renderer.updateInfo(this.state.wall.length - this.state.wallIndex, this.state.currentPlayer);
           // ツモ後は捨て待ちへ
@@ -112,6 +127,12 @@ export class GameController {
             this.state.playerHands[this.state.currentPlayer].push(t);
             this.state.sortHand(this.state.currentPlayer);
           }
+
+          // Human向けの pending はクリア（AI手番中はボタンを出さない）
+          const winBtn = document.getElementById('win-button') as HTMLButtonElement | null;
+          if (winBtn) winBtn.style.display = 'none';
+          this.pendingHumanTsumoWin = null;
+
           this.syncRender();
           this.renderer.updateInfo(this.state.wall.length - this.state.wallIndex, this.state.currentPlayer);
           // 次は AI の捨て
@@ -173,6 +194,21 @@ export class GameController {
       if (id != null) this.onTileIdClick(id);
     });
 
+    // 「アガリ」ボタンのバインド
+    const winBtn = document.getElementById('win-button') as HTMLButtonElement | null;
+    if (winBtn) {
+      winBtn.addEventListener('click', () => {
+        if (!this.pendingHumanTsumoWin) return;
+        // 結果を描画して終了
+        this.syncRender();
+        this.renderer.drawYaku(this.pendingHumanTsumoWin, this.yakuList);
+        this.enterPhase('GameOver');
+        // ボタンを隠す
+        winBtn.style.display = 'none';
+        this.pendingHumanTsumoWin = null;
+      });
+    }
+
     this.syncRender();
   }
 
@@ -211,6 +247,11 @@ export class GameController {
 
     const tile = hand0[tileIndex];
     if (!tile) return;
+
+    // Humanが打牌する場合は、アガリ中断
+    const winBtn = document.getElementById('win-button') as HTMLButtonElement | null;
+    if (winBtn) winBtn.style.display = 'none';
+    this.pendingHumanTsumoWin = null;
 
     // 捨て
     hand0.splice(tileIndex, 1);
