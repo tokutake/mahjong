@@ -1,0 +1,38 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+# keep lockfile? If you prefer to commit lockfile, remove the above line.
+
+# TypeScript
+dist/
+out/
+build/
+*.tsbuildinfo
+
+# Coverage / logs
+coverage/
+logs/
+*.log
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+
+# Misc
+.tmp/
+.cache/
