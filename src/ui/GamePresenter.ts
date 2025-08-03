@@ -15,7 +15,6 @@ export type CalcYakuFn = (tiles: Tile[]) => CalcYakuResult;
 
 export class GamePresenter {
   private canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
   private renderer: MahjongRenderer;
   private inputMapper: InputMapper;
   private state: GameState;
@@ -30,10 +29,6 @@ export class GamePresenter {
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
     if (!canvas) throw new Error('canvas #game-canvas not found');
     this.canvas = canvas;
-
-    const ctx = this.canvas.getContext('2d');
-    if (!ctx) throw new Error('CanvasRenderingContext2D not available');
-    this.ctx = ctx;
 
     this.renderer = new MahjongRenderer(this.canvas);
     this.inputMapper = new InputMapper();
