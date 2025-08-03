@@ -123,13 +123,6 @@ export class GameState {
     if (!drawn) return hand;
     return [...sorted13, drawn];
   }
-
-  // Rendererから同期される
-  setHitRegions(hitMap: Map<number, HitRect>, priorityIds: number[]): void {
-    this.hitMap = hitMap;
-    this.inputMapper.setHitRegions(hitMap);
-    this.inputMapper.setPriority(priorityIds);
-  }
 }
 
 export type { Player as PlayerType };
