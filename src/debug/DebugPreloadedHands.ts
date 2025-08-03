@@ -5,7 +5,7 @@ import type { Player } from '../ui/inputMapper';
 export class DebugPreloadedHands {
   // Apply to MahjongGame-like instance (has drawTile/sortHand/playerHands/currentPlayer/dealer)
   static applyToGame(game: {
-    playerHands: [Tile[], Tile[], Tile[], Tile[]];
+    playerHands: { set: (p: Player, tiles: Tile[]) => void; push: (p: Player, t: Tile) => void; get: (p: Player) => Tile[]; sort: (p: Player) => void };
     drawTile: () => Tile | null;
     sortHand: (p: Player) => void;
     currentPlayer: Player;
@@ -13,12 +13,11 @@ export class DebugPreloadedHands {
   }): void {
     const dealer = (game.dealer ?? (0 as Player)) as Player;
 
-    game.playerHands = [[], [], [], []];
     for (let p: Player = 0 as Player; p < 4; p = ((p + 1) % 4) as Player) {
-      game.playerHands[p] = [];
+      game.playerHands.set(p, []);
       for (let i = 0; i < 13; i++) {
         const t = game.drawTile();
-        if (t !== null) game.playerHands[p].push(t);
+        if (t !== null) game.playerHands.push(p, t);
       }
       game.sortHand(p);
       if (p === (3 as Player)) break;
@@ -26,7 +25,7 @@ export class DebugPreloadedHands {
 
     const firstDraw = game.drawTile();
     if (firstDraw) {
-      game.playerHands[dealer].push(firstDraw);
+      game.playerHands.push(dealer, firstDraw);
       game.sortHand(dealer);
     }
 
@@ -49,14 +48,14 @@ export class DebugPreloadedHands {
     pushN('s', 4);
     pushN('s', 5, 2);
 
-    game.playerHands[dealer] = hand;
+    game.playerHands.set(dealer, hand);
     game.sortHand(dealer);
     game.currentPlayer = dealer;
   }
 
   // Apply to GameState-like instance (uses drawTile and has dealer)
   static applyToState(state: {
-    playerHands: [Tile[], Tile[], Tile[], Tile[]];
+    playerHands: { set: (p: Player, tiles: Tile[]) => void; push: (p: Player, t: Tile) => void; get: (p: Player) => Tile[]; sort: (p: Player) => void };
     drawTile: () => Tile | null;
     sortHand: (p: Player) => void;
     currentPlayer: Player;
@@ -64,12 +63,11 @@ export class DebugPreloadedHands {
   }): void {
     const dealer = state.dealer;
 
-    state.playerHands = [[], [], [], []];
     for (let p: Player = 0 as Player; p < 4; p = ((p + 1) % 4) as Player) {
-      state.playerHands[p] = [];
+      state.playerHands.set(p, []);
       for (let i = 0; i < 13; i++) {
         const t = state.drawTile();
-        if (t !== null) state.playerHands[p].push(t);
+        if (t !== null) state.playerHands.push(p, t);
       }
       state.sortHand(p);
       if (p === (3 as Player)) break;
@@ -77,7 +75,7 @@ export class DebugPreloadedHands {
 
     const firstDraw = state.drawTile();
     if (firstDraw) {
-      state.playerHands[dealer].push(firstDraw);
+      state.playerHands.push(dealer, firstDraw);
       state.sortHand(dealer);
     }
 
@@ -91,7 +89,7 @@ export class DebugPreloadedHands {
     pushN('s', 2); pushN('s', 3); pushN('s', 4);
     pushN('s', 5, 2);
 
-    state.playerHands[dealer] = hand;
+    state.playerHands.set(dealer, hand);
     state.sortHand(dealer);
     state.currentPlayer = dealer;
   }

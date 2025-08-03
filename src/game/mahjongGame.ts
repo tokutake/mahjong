@@ -1,7 +1,7 @@
 import { Tile } from '../domain/tile';
-import type { Suit } from '../domain/tile';
 import { Wall } from '../domain/wall';
 import { InputMapper, type HitRect, type Player } from '../ui/inputMapper';
+import { PlayerHands } from '../domain/playerHands';
 import { MahjongRenderer, type CalcYakuResult } from '../ui/renderer';
 import { DebugPreloadedHands } from '../debug/DebugPreloadedHands';
 import type { YakuList } from '../domain/yaku';
@@ -15,7 +15,7 @@ export class MahjongGame {
   ctx: CanvasRenderingContext2D;
   renderer: MahjongRenderer;
   inputMapper: InputMapper;
-  playerHands: [Tile[], Tile[], Tile[], Tile[]];
+  playerHands: PlayerHands;
   discardPiles: [Tile[], Tile[], Tile[], Tile[]];
   currentPlayer: Player;
   wall: Wall;
@@ -37,7 +37,7 @@ export class MahjongGame {
     this.renderer = new MahjongRenderer(this.canvas);
     this.inputMapper = new InputMapper();
 
-    this.playerHands = [[], [], [], []];
+    this.playerHands = new PlayerHands();
     this.discardPiles = [[], [], [], []];
     this.currentPlayer = 0 as Player;
     this.wall = new Wall();
@@ -55,8 +55,10 @@ export class MahjongGame {
 
     this.wall = new Wall();
 
+    // reset hands each new game
+    this.playerHands = new PlayerHands();
+
     if (this.debugPreloadedYaku) {
-      // Debug: use external helper so production bundle can tree-shake when DEV=false
       DebugPreloadedHands.applyToGame(this);
     } else {
       this.dealInitialHands();
@@ -71,17 +73,17 @@ export class MahjongGame {
 
   dealInitialHands(): void {
     for (let player: Player = 0 as Player; player < 4; player = ((player + 1) % 4) as Player) {
-      this.playerHands[player] = [];
+      this.playerHands.set(player, []);
       for (let i = 0; i < 13; i++) {
         const t = this.wall.drawTile();
-        if (t !== null) this.playerHands[player].push(t);
+        if (t !== null) this.playerHands.push(player, t);
       }
       this.sortHand(player);
     }
 
     const firstDraw = this.wall.drawTile();
     if (firstDraw) {
-      this.playerHands[0 as Player].push(firstDraw);
+      this.playerHands.push(0 as Player, firstDraw);
       this.sortHand(0 as Player);
     }
   }
@@ -91,17 +93,11 @@ export class MahjongGame {
   }
 
   sortHand(player: Player): void {
-    this.playerHands[player].sort((a, b) => {
-      if (a.suit !== b.suit) {
-        const suitOrder = { m: 1, p: 2, s: 3, z: 4 } as const;
-        return suitOrder[a.suit] - suitOrder[b.suit];
-      }
-      return a.number - b.number;
-    });
+    this.playerHands.sort(player);
   }
 
   getHandWithFixedDraw(player: Player): Tile[] {
-    const hand = this.playerHands[player];
+    const hand = this.playerHands.get(player);
     if (player !== 0) return hand;
     if (hand.length <= 13) return hand;
 
@@ -125,9 +121,9 @@ export class MahjongGame {
     this.renderer.clear();
 
     this.renderer.drawPlayerHand(0 as Player, this.getHandWithFixedDraw(0 as Player), 60 + 47, 650);
-    this.renderer.drawPlayerHand(1 as Player, this.playerHands[1 as Player], 50, 50, true);
-    this.renderer.drawPlayerHand(2 as Player, this.playerHands[2 as Player], 60 + 47, 100);
-    this.renderer.drawPlayerHand(3 as Player, this.playerHands[3 as Player], 1100, 50, true);
+    this.renderer.drawPlayerHand(1 as Player, this.playerHands.get(1 as Player), 50, 50, true);
+    this.renderer.drawPlayerHand(2 as Player, this.playerHands.get(2 as Player), 60 + 47, 100);
+    this.renderer.drawPlayerHand(3 as Player, this.playerHands.get(3 as Player), 1100, 50, true);
 
     this.renderer.drawDiscardPiles(this.discardPiles);
     this.renderer.drawInfo(this.wall.getTotalWallLength(), this.wall.getWallIndex(), this.currentPlayer);
@@ -139,7 +135,7 @@ export class MahjongGame {
   }
 
   drawYakuInfo(): void {
-    const hand = this.playerHands[0 as Player];
+    const hand = this.playerHands.get(0 as Player);
     if (!hand || hand.length !== 14) return;
 
     const calc = this.calcYaku;
@@ -157,7 +153,7 @@ export class MahjongGame {
         const r = this.renderer.hitMap.get(id);
         if (!r) return false;
         if (r.player !== 0) return false;
-        return this.playerHands[0 as Player].length === 14;
+        return this.playerHands.length(0 as Player) === 14;
       });
       if (clickedId != null) {
         this.handleTileIdClick(clickedId);
@@ -167,7 +163,7 @@ export class MahjongGame {
     const newGameBtn = document.getElementById('new-game');
     newGameBtn?.addEventListener('click', () => {
       this.discardPiles = [[], [], [], []];
-      this.playerHands = [[], [], [], []];
+      this.playerHands = new PlayerHands();
       this.currentPlayer = 0 as Player;
       this.wall = new Wall();
 
@@ -184,9 +180,9 @@ export class MahjongGame {
 
   handleTileIdClick(clickedId: number): void {
     if (this.currentPlayer !== 0) return;
-    if (this.playerHands[0 as Player].length !== 14) return;
+    if (this.playerHands.length(0 as Player) !== 14) return;
 
-    const realIndex = this.playerHands[0 as Player].findIndex(t => t.id === clickedId);
+    const realIndex = this.playerHands.findIndexById(0 as Player, clickedId);
     if (realIndex < 0) return;
 
     this.discardTile(realIndex);
@@ -195,11 +191,10 @@ export class MahjongGame {
   discardTile(tileIndex: number): void {
     if (this.currentPlayer !== 0) return;
 
-    const hand0 = this.playerHands[0 as Player];
+    const hand0 = this.playerHands.get(0 as Player);
     if (!hand0 || tileIndex < 0 || tileIndex >= hand0.length) return;
-    const tile = hand0[tileIndex];
-    if (tile === undefined) return;
-    hand0.splice(tileIndex, 1);
+    const tile = this.playerHands.popAt(0 as Player, tileIndex);
+    if (!tile) return;
     this.discardPiles[0 as Player].push(tile);
 
     this.sortHand(0);
@@ -223,14 +218,14 @@ export class MahjongGame {
 
     const drawnTile = this.wall.drawTile();
     if (drawnTile) {
-      this.playerHands[this.currentPlayer].push(drawnTile);
+      this.playerHands.push(this.currentPlayer, drawnTile);
       this.sortHand(this.currentPlayer);
 
-      const randomIndex = Math.floor(Math.random() * this.playerHands[this.currentPlayer].length);
-      const handCur = this.playerHands[this.currentPlayer];
+      const randomIndex = Math.floor(Math.random() * this.playerHands.length(this.currentPlayer));
+      const handCur = this.playerHands.get(this.currentPlayer);
       if (handCur.length > 0) {
         const discardedTile = handCur[randomIndex]!;
-        handCur.splice(randomIndex, 1);
+        this.playerHands.popAt(this.currentPlayer, randomIndex);
         this.discardPiles[this.currentPlayer].push(discardedTile as Tile);
       }
     }
@@ -245,7 +240,7 @@ export class MahjongGame {
     } else {
       const newTile = this.wall.drawTile();
       if (newTile) {
-        this.playerHands[0 as Player].push(newTile);
+        this.playerHands.push(0 as Player, newTile);
         this.draw();
       }
     }
