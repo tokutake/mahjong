@@ -1,5 +1,6 @@
 import { Tile } from '../domain/tile';
 import type { Suit } from '../domain/tile';
+import { Wall } from '../domain/wall';
 import { InputMapper, type HitRect, type Player } from '../ui/inputMapper';
 import { MahjongRenderer, type CalcYakuResult } from '../ui/renderer';
 import { DebugPreloadedHands } from '../debug/DebugPreloadedHands';
@@ -18,8 +19,7 @@ export class MahjongGame {
   discardPiles: [Tile[], Tile[], Tile[], Tile[]];
   currentPlayer: Player;
   selectedTile: Tile | null;
-  wall: Tile[];
-  wallIndex: number;
+  wall: Wall;
   hitMap: Map<number, HitRect>;
   debugPreloadedYaku: boolean;
 
@@ -43,8 +43,7 @@ export class MahjongGame {
     this.discardPiles = [[], [], [], []];
     this.currentPlayer = 0 as Player;
     this.selectedTile = null;
-    this.wall = [];
-    this.wallIndex = 0;
+    this.wall = new Wall();
 
     this.hitMap = new Map();
     this.debugPreloadedYaku = true;
@@ -57,8 +56,7 @@ export class MahjongGame {
     this.renderer.clear();
     this.discardPiles = [[], [], [], []];
 
-    this.createAllTiles();
-    this.shuffleWall();
+    this.wall = new Wall();
 
     if (this.debugPreloadedYaku) {
       // Debug: use external helper so production bundle can tree-shake when DEV=false
@@ -70,49 +68,21 @@ export class MahjongGame {
     this.draw();
 
     const remainEl = document.getElementById('remaining-tiles');
-    if (remainEl) remainEl.textContent = String(this.wall.length - this.wallIndex);
+    if (remainEl) remainEl.textContent = String(this.wall.getRemainingCount());
   }
 
-  createAllTiles(): void {
-    this.wall = [];
-
-    (['m', 'p', 's'] as Suit[]).forEach((suit: Suit) => {
-      for (let num = 1; num <= 9; num++) {
-        for (let i = 0; i < 4; i++) {
-          this.wall.push(new Tile(suit, num));
-        }
-      }
-    });
-
-    for (let num = 1; num <= 7; num++) {
-      for (let i = 0; i < 4; i++) {
-        this.wall.push(new Tile('z', num));
-      }
-    }
-  }
-
-
-  shuffleWall(): void {
-    for (let i = this.wall.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const temp: Tile = this.wall[i]!;
-      this.wall[i] = this.wall[j]!;
-      this.wall[j] = temp;
-    }
-    this.wallIndex = 0;
-  }
 
   dealInitialHands(): void {
     for (let player: Player = 0 as Player; player < 4; player = ((player + 1) % 4) as Player) {
       this.playerHands[player] = [];
       for (let i = 0; i < 13; i++) {
-        const t = this.drawTile();
+        const t = this.wall.drawTile();
         if (t !== null) this.playerHands[player].push(t);
       }
       this.sortHand(player);
     }
 
-    const firstDraw = this.drawTile();
+    const firstDraw = this.wall.drawTile();
     if (firstDraw) {
       this.playerHands[0 as Player].push(firstDraw);
       this.sortHand(0 as Player);
@@ -120,11 +90,7 @@ export class MahjongGame {
   }
 
   drawTile(): Tile | null {
-    if (this.wallIndex < this.wall.length) {
-      const tile = this.wall[this.wallIndex++];
-      return tile !== undefined ? tile : null;
-    }
-    return null;
+    return this.wall.drawTile();
   }
 
   sortHand(player: Player): void {
@@ -167,7 +133,7 @@ export class MahjongGame {
     this.renderer.drawPlayerHand(3 as Player, this.playerHands[3 as Player], 1100, 50, true);
 
     this.renderer.drawDiscardPiles(this.discardPiles);
-    this.renderer.drawInfo(this.wall.length, this.wallIndex, this.currentPlayer);
+    this.renderer.drawInfo(this.wall.getTotalWallLength(), this.wall.getWallIndex(), this.currentPlayer);
     this.drawYakuInfo();
 
     this.inputMapper.setHitRegions(this.renderer.hitMap);
@@ -206,8 +172,7 @@ export class MahjongGame {
       this.discardPiles = [[], [], [], []];
       this.playerHands = [[], [], [], []];
       this.currentPlayer = 0 as Player;
-      this.wall = [];
-      this.wallIndex = 0;
+      this.wall = new Wall();
 
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -265,7 +230,7 @@ export class MahjongGame {
   aiTurn(): void {
     if (this.currentPlayer === (0 as Player)) return;
 
-    const drawnTile = this.drawTile();
+    const drawnTile = this.wall.drawTile();
     if (drawnTile) {
       this.playerHands[this.currentPlayer].push(drawnTile);
       this.sortHand(this.currentPlayer);
@@ -287,7 +252,7 @@ export class MahjongGame {
         this.aiTurn();
       }, 100);
     } else {
-      const newTile = this.drawTile();
+      const newTile = this.wall.drawTile();
       if (newTile) {
         this.playerHands[0 as Player].push(newTile);
         this.draw();
@@ -295,6 +260,6 @@ export class MahjongGame {
     }
 
     const remainEl = document.getElementById('remaining-tiles');
-    if (remainEl) remainEl.textContent = String(this.wall.length - this.wallIndex);
+    if (remainEl) remainEl.textContent = String(this.wall.getRemainingCount());
   }
 }

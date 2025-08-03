@@ -1,77 +1,11 @@
-export type Suit = 'm' | 'p' | 's' | 'z';
-export type TileType = 'number' | 'honor';
+import { Tile, type Suit } from '../domain/tile';
+import { InputMapper } from '../ui/inputMapper';
 export type Player = 0 | 1 | 2 | 3;
-
-let __tileSeq_state = 0;
-export class Tile {
-  id: number;
-  suit: Suit;
-  number: number;
-  type: TileType;
-  unicode: string;
-
-  constructor(suit: Suit, number: number, type: TileType = 'number') {
-    this.id = __tileSeq_state++;
-    this.suit = suit;
-    this.number = number;
-    this.type = type;
-    this.unicode = this.getUnicode();
-  }
-
-  private getUnicode(): string {
-    const tiles: Readonly<Record<Suit, readonly string[]>> = {
-      m: ['🀇', '🀈', '🀉', '🀊', '🀋', '🀌', '🀍', '🀎', '🀏'] as const,
-      p: ['🀙', '🀚', '🀛', '🀜', '🀝', '🀞', '🀟', '🀠', '🀡'] as const,
-      s: ['🀐', '🀑', '🀒', '🀓', '🀔', '🀕', '🀖', '🀗', '🀘'] as const,
-      z: ['🀀', '🀁', '🀂', '🀃', '🀆', '🀅', '🀄'] as const
-    };
-    const idx = this.number - 1;
-    if (this.suit === 'z') {
-      if (idx < 0 || idx >= tiles.z.length) {
-        throw new Error(`Invalid honor number: ${this.number}`);
-      }
-      return tiles.z[idx]!;
-    }
-    if (idx < 0 || idx >= tiles[this.suit].length) {
-      throw new Error(`Invalid number for suit ${this.suit}: ${this.number}`);
-    }
-    return tiles[this.suit][idx]!;
-  }
-
-  equals(other: Tile): boolean {
-    return this.suit === other.suit && this.number === other.number;
-  }
-}
 
 export type HitRect = { x: number; y: number; w: number; h: number; player: Player };
 
-class InputMapper {
-  private regions: Map<number, HitRect> = new Map();
-  private priority: number[] = [];
-
-  setHitRegions(regions: Map<number, HitRect>): void {
-    this.regions = new Map(regions);
-  }
-
-  setPriority(idsInOrder: number[]): void {
-    this.priority = idsInOrder.slice();
-  }
-
-  pick(x: number, y: number, filter?: (id: number) => boolean): number | null {
-    const ids = this.priority.length > 0 ? this.priority : Array.from(this.regions.keys());
-    for (const id of ids) {
-      const rect = this.regions.get(id);
-      if (!rect) continue;
-      if (filter && !filter(id)) continue;
-      if (x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h) {
-        return id;
-      }
-    }
-    return null;
-  }
-}
-
 import { DebugPreloadedHands } from '../debug/DebugPreloadedHands';
+import { Wall } from '../domain/wall';
 type DomainTile = import('../domain/tile').Tile;
 type DomainSuit = import('../domain/tile').Suit;
 
@@ -84,11 +18,7 @@ export class GameState {
   scores: [number, number, number, number] = [25000, 25000, 25000, 25000];
 
   // 山と王牌
-  wall: Tile[] = [];
-  wallIndex = 0; // = liveWallStart + drawsConsumed
-  deadWall: Tile[] = []; // 王牌14枚（ツモ切れ防止のため常に残す）
-  doraIndicators: Tile[] = []; // 表ドラ指示牌（初期1、カンで増える）
-  uraIndicators: Tile[] = []; // 裏ドラ指示牌（リーチ時のみ有効、可視化用に保持）
+  wall: Wall = new Wall();
 
   // 場進行
   roundWind: 0 | 1 | 2 | 3 = 0; // 東南西北(0..3)
@@ -111,25 +41,17 @@ export class GameState {
     this.discardPiles = [[], [], [], []];
     // スコアは半荘継続想定のため維持（東場/南場を跨いでも保持）
     // 必要なら場がリセットされる別APIで初期化する
-    this.wall = [];
-    this.deadWall = [];
-    this.doraIndicators = [];
-    this.uraIndicators = [];
-    this.wallIndex = 0;
+    this.wall = new Wall();
     this.currentPlayer = this.dealer;
     this.selectedTile = null;
     this.hitMap = new Map();
-
-    this.createAllTiles();
-    this.shuffleWall();
-    this.buildDeadWallAndIndicators(); // 王牌14枚＋ドラ表示
 
     if (this.debugPreloadedYaku) {
       // Adapt state to DebugPreloadedHands expected domain types
       const adapter = {
         get playerHands() { return thisRef.playerHands as unknown as [DomainTile[], DomainTile[], DomainTile[], DomainTile[]]; },
         set playerHands(v: [DomainTile[], DomainTile[], DomainTile[], DomainTile[]]) { thisRef.playerHands = v as unknown as [Tile[], Tile[], Tile[], Tile[]]; },
-        drawTileStrict: () => this.drawTileStrict() as unknown as DomainTile | null,
+        drawTile: () => this.wall.drawTile() as unknown as DomainTile | null,
         sortHand: (p: Player) => this.sortHand(p),
         get currentPlayer() { return thisRef.currentPlayer; },
         set currentPlayer(v: Player) { thisRef.currentPlayer = v; },
@@ -138,7 +60,7 @@ export class GameState {
       const thisRef = this;
       DebugPreloadedHands.applyToState(adapter as unknown as {
         playerHands: [DomainTile[], DomainTile[], DomainTile[], DomainTile[]];
-        drawTileStrict: () => DomainTile | null;
+        drawTile: () => DomainTile | null;
         sortHand: (p: Player) => void;
         currentPlayer: Player;
         dealer: Player;
@@ -149,49 +71,6 @@ export class GameState {
     return;
   }
 
-  createAllTiles(): void {
-    this.wall = [];
-    (['m', 'p', 's'] as Suit[]).forEach((suit: Suit) => {
-      for (let num = 1; num <= 9; num++) {
-        for (let i = 0; i < 4; i++) {
-          this.wall.push(new Tile(suit, num));
-        }
-      }
-    });
-    for (let num = 1; num <= 7; num++) {
-      for (let i = 0; i < 4; i++) {
-        this.wall.push(new Tile('z', num));
-      }
-    }
-  }
-
-  shuffleWall(): void {
-    for (let i = this.wall.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const tmp = this.wall[i]!;
-      this.wall[i] = this.wall[j]!;
-      this.wall[j] = tmp;
-    }
-    this.wallIndex = 0;
-  }
-
-  // 王牌（deadWall）14枚を末尾から確保し、表ドラ/裏ドラの位置を決定
-  private buildDeadWallAndIndicators(): void {
-    // 末尾14枚を王牌とする
-    const deadCount = 14;
-    if (this.wall.length < deadCount) throw new Error('wall too small');
-    this.deadWall = this.wall.splice(this.wall.length - deadCount, deadCount);
-
-    // ドラ表示牌は王牌の4枚目（一般ルールの「手前から」表現に対応した簡易実装）
-    // 配列末尾を王牌の「奥」とみなし、分かりやすく先頭から数える
-    // ここでは deadWall[4] を表示牌とする（厳密な位置は将来の牌山モデルで調整）
-    const indicatorIndex = 4;
-    const uraIndex = indicatorIndex + 5; // 裏ドラは表示牌の5枚先（目安）
-    const ind = this.deadWall[indicatorIndex];
-    if (ind) this.doraIndicators = [ind];
-    const ura = this.deadWall[uraIndex];
-    if (ura) this.uraIndicators = [ura];
-  }
 
   // 厳密配牌: 親14・子13。配算法自体は4-4-4-1に拘らず枚数結果を保証
   private dealInitialHandsStrict(): void {
@@ -200,13 +79,13 @@ export class GameState {
       this.playerHands[p] = [];
       const base = 13;
       for (let i = 0; i < base; i++) {
-        const t = this.drawTileStrict();
+        const t = this.wall.drawTile();
         if (t) this.playerHands[p].push(t);
       }
       this.sortHand(p);
     }
     // 親最初のツモ（14枚目）
-    const first = this.drawTileStrict();
+    const first = this.wall.drawTile();
     if (first) {
       this.playerHands[this.dealer].push(first);
       this.sortHand(this.dealer);
@@ -215,17 +94,8 @@ export class GameState {
   }
 
 
-  // 王牌14枚を残すため、live wallからのみツモ可能
-  drawTileStrict(): Tile | null {
-    const liveWallRemaining = this.wall.length - this.wallIndex;
-    if (liveWallRemaining <= 0) return null;
-    const tile = this.wall[this.wallIndex++];
-    return tile ?? null;
-  }
-
-  // 後方互換（既存呼び出しがあるためラッパー）
   drawTile(): Tile | null {
-    return this.drawTileStrict();
+    return this.wall.drawTile();
   }
 
   sortHand(player: Player): void {
@@ -270,29 +140,28 @@ export class GameState {
     });
   }
 
-  // ドラ表示牌の次位牌を返す（数牌は9→1、字牌は東→南→西→北→東、白→發→中→白）
-  getDoraFromIndicator(ind: Tile): Tile {
-    const nextNumber = () => {
-      if (ind.suit === 'z') {
-        // 1-4: 風、5-7: 三元
-        if (ind.number >= 1 && ind.number <= 4) return ((ind.number % 4) + 1);
-        if (ind.number >= 5 && ind.number <= 7) return ((ind.number - 5 + 1) % 3) + 5;
-        return ind.number;
-      } else {
-        return ind.number === 9 ? 1 : ind.number + 1;
-      }
-    };
-    return new Tile(ind.suit as DomainSuit as Suit, nextNumber(), ind.type);
-  }
-
-  // 現在有効な表ドラ一覧（カン未実装なので1枚のみだが配列対応）
   listActiveDora(): Tile[] {
-    return this.doraIndicators.map((ind) => this.getDoraFromIndicator(ind));
+    return this.wall.listActiveDora();
   }
 
-  // 流局（山切れ：王牌14枚を残してツモ不可になった）かどうか
   isExhaustiveDraw(): boolean {
-    return (this.wall.length - this.wallIndex) <= 0;
+    return this.wall.isExhaustiveDraw();
+  }
+
+  getDoraIndicators(): Tile[] {
+    return this.wall.getDoraIndicators();
+  }
+
+  getWallRemainingCount(): number {
+    return this.wall.getRemainingCount();
+  }
+
+  getWallIndex(): number {
+    return this.wall.getWallIndex();
+  }
+
+  getTotalWallLength(): number {
+    return this.wall.getTotalWallLength();
   }
 }
 

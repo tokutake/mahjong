@@ -54,10 +54,10 @@ export class DebugPreloadedHands {
     game.currentPlayer = dealer;
   }
 
-  // Apply to GameState-like instance (uses drawTileStrict and has dealer)
+  // Apply to GameState-like instance (uses drawTile and has dealer)
   static applyToState(state: {
     playerHands: [Tile[], Tile[], Tile[], Tile[]];
-    drawTileStrict: () => Tile | null;
+    drawTile: () => Tile | null;
     sortHand: (p: Player) => void;
     currentPlayer: Player;
     dealer: Player;
@@ -68,14 +68,14 @@ export class DebugPreloadedHands {
     for (let p: Player = 0 as Player; p < 4; p = ((p + 1) % 4) as Player) {
       state.playerHands[p] = [];
       for (let i = 0; i < 13; i++) {
-        const t = state.drawTileStrict();
+        const t = state.drawTile();
         if (t !== null) state.playerHands[p].push(t);
       }
       state.sortHand(p);
       if (p === (3 as Player)) break;
     }
 
-    const firstDraw = state.drawTileStrict();
+    const firstDraw = state.drawTile();
     if (firstDraw) {
       state.playerHands[dealer].push(firstDraw);
       state.sortHand(dealer);
