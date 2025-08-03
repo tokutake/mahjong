@@ -1,5 +1,5 @@
 import { describe, it, expect } from "@jest/globals";
-import { calcYaku } from "../yaku";
+import { calcYaku } from "../src/domain/yaku";
 
 /**
  * 前提（ユーザー合意）
@@ -58,7 +58,6 @@ describe("calcYaku - 基本役の判定（門前想定）", () => {
       S(5), S(5),
     ];
     const r = calcYaku(hand);
-    console.log("断么九のテスト結果:", r);
     expectHasYaku(r, "断么九");
     expectNoYakuman(r);
     expect(r.han).toBe(1);
