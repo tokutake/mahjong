@@ -2,6 +2,7 @@ import { Tile } from '../domain/tile';
 import type { Suit } from '../domain/tile';
 import { InputMapper, type HitRect, type Player } from '../ui/inputMapper';
 import { MahjongRenderer, type CalcYakuResult } from '../ui/renderer';
+import { DebugPreloadedHands } from '../debug/DebugPreloadedHands';
 
 export type CalcYakuFn = (tiles: Tile[]) => CalcYakuResult;
 
@@ -60,7 +61,8 @@ export class MahjongGame {
     this.shuffleWall();
 
     if (this.debugPreloadedYaku) {
-      this.setupPreloadedYakuHands();
+      // Debug: use external helper so production bundle can tree-shake when DEV=false
+      DebugPreloadedHands.applyToGame(this);
     } else {
       this.dealInitialHands();
     }
@@ -89,49 +91,6 @@ export class MahjongGame {
     }
   }
 
-  setupPreloadedYakuHands(): void {
-    this.playerHands = [[], [], [], []];
-    for (let player: Player = 0 as Player; player < 4; player = (player + 1) as Player) {
-      console.log('Setting up preloaded Yaku hands for debugging...');
-      this.playerHands[player] = [];
-      for (let i = 0; i < 13; i++) {
-        const t = this.drawTile();
-        if (t !== null) this.playerHands[player].push(t);
-      }
-      this.sortHand(player);
-
-      if (player == (4 as Player)) {
-        break;
-      }
-    }
-
-    const firstDraw = this.drawTile();
-    if (firstDraw) {
-      this.playerHands[0 as Player].push(firstDraw);
-      this.sortHand(0 as Player);
-    }
-
-    const hand: Tile[] = [];
-    const pushN = (suit: Suit, number: number, count: number = 1) => {
-      for (let i = 0; i < count; i++) hand.push(new Tile(suit, number));
-    };
-    pushN('s', 1);
-    pushN('s', 2);
-    pushN('s', 3);
-    pushN('s', 4);
-    pushN('s', 5);
-    pushN('s', 6);
-    pushN('s', 7);
-    pushN('s', 8);
-    pushN('s', 9);
-    pushN('s', 2);
-    pushN('s', 3);
-    pushN('s', 4);
-    pushN('s', 5, 2);
-
-    this.playerHands[0 as Player] = hand;
-    this.sortHand(0 as Player);
-  }
 
   shuffleWall(): void {
     for (let i = this.wall.length - 1; i > 0; i--) {

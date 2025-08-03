@@ -71,6 +71,10 @@ class InputMapper {
   }
 }
 
+import { DebugPreloadedHands } from '../debug/DebugPreloadedHands';
+type DomainTile = import('../domain/tile').Tile;
+type DomainSuit = import('../domain/tile').Suit;
+
 export class GameState {
   // rendering/ports provide actual drawing; state is pure-ish with minimal side effects
   playerHands: [Tile[], Tile[], Tile[], Tile[]] = [[], [], [], []];
@@ -121,7 +125,24 @@ export class GameState {
     this.buildDeadWallAndIndicators(); // 王牌14枚＋ドラ表示
 
     if (this.debugPreloadedYaku) {
-      this.setupPreloadedYakuHands();
+      // Adapt state to DebugPreloadedHands expected domain types
+      const adapter = {
+        get playerHands() { return thisRef.playerHands as unknown as [DomainTile[], DomainTile[], DomainTile[], DomainTile[]]; },
+        set playerHands(v: [DomainTile[], DomainTile[], DomainTile[], DomainTile[]]) { thisRef.playerHands = v as unknown as [Tile[], Tile[], Tile[], Tile[]]; },
+        drawTileStrict: () => this.drawTileStrict() as unknown as DomainTile | null,
+        sortHand: (p: Player) => this.sortHand(p),
+        get currentPlayer() { return thisRef.currentPlayer; },
+        set currentPlayer(v: Player) { thisRef.currentPlayer = v; },
+        get dealer() { return thisRef.dealer; }
+      };
+      const thisRef = this;
+      DebugPreloadedHands.applyToState(adapter as unknown as {
+        playerHands: [DomainTile[], DomainTile[], DomainTile[], DomainTile[]];
+        drawTileStrict: () => DomainTile | null;
+        sortHand: (p: Player) => void;
+        currentPlayer: Player;
+        dealer: Player;
+      });
     } else {
       this.dealInitialHandsStrict();
     }
@@ -193,37 +214,6 @@ export class GameState {
     this.currentPlayer = this.dealer;
   }
 
-  setupPreloadedYakuHands(): void {
-    this.playerHands = [[], [], [], []];
-    for (let p: Player = 0 as Player; p < 4; p = ((p + 1) % 4) as Player) {
-      this.playerHands[p] = [];
-      for (let i = 0; i < 13; i++) {
-        const t = this.drawTileStrict();
-        if (t !== null) this.playerHands[p].push(t);
-      }
-      this.sortHand(p);
-      if (p == (3 as Player)) break;
-    }
-    const firstDraw = this.drawTileStrict();
-    if (firstDraw) {
-      this.playerHands[this.dealer].push(firstDraw);
-      this.sortHand(this.dealer);
-    }
-
-    const hand: Tile[] = [];
-    const pushN = (suit: Suit, number: number, count: number = 1) => {
-      for (let i = 0; i < count; i++) hand.push(new Tile(suit, number));
-    };
-    pushN('s', 1); pushN('s', 2); pushN('s', 3);
-    pushN('s', 4); pushN('s', 5); pushN('s', 6);
-    pushN('s', 7); pushN('s', 8); pushN('s', 9);
-    pushN('s', 2); pushN('s', 3); pushN('s', 4);
-    pushN('s', 5, 2);
-
-    this.playerHands[this.dealer] = hand;
-    this.sortHand(this.dealer);
-    this.currentPlayer = this.dealer;
-  }
 
   // 王牌14枚を残すため、live wallからのみツモ可能
   drawTileStrict(): Tile | null {
@@ -292,7 +282,7 @@ export class GameState {
         return ind.number === 9 ? 1 : ind.number + 1;
       }
     };
-    return new Tile(ind.suit, nextNumber(), ind.type);
+    return new Tile(ind.suit as DomainSuit as Suit, nextNumber(), ind.type);
   }
 
   // 現在有効な表ドラ一覧（カン未実装なので1枚のみだが配列対応）
