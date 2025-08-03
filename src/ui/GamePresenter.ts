@@ -128,7 +128,7 @@ export class GamePresenter {
           const afterDraw = applyAction(next, { type: 'DrawSelf', player: 0 as Player });
           this.setState(afterDraw);
         }
-      }, 100);
+      }, 10);
     }
   }
 }

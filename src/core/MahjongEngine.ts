@@ -5,7 +5,6 @@ import type { Player } from '../ui/inputMapper';
 import { isTenpai } from '../domain/tenpai';
 
 import { DebugPreloadedHands } from '../debug/DebugPreloadedHands';
-
 export type DiscardPiles = [Tile[], Tile[], Tile[], Tile[]];
 
 export type GameState = {
