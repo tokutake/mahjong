@@ -52,45 +52,4 @@ export class DebugPreloadedHands {
     game.sortHand(dealer);
     game.currentPlayer = dealer;
   }
-
-  // Apply to GameState-like instance (uses drawTile and has dealer)
-  static applyToState(state: {
-    playerHands: { set: (p: Player, tiles: Tile[]) => void; push: (p: Player, t: Tile) => void; get: (p: Player) => Tile[]; sort: (p: Player) => void };
-    drawTile: () => Tile | null;
-    sortHand: (p: Player) => void;
-    currentPlayer: Player;
-    dealer: Player;
-  }): void {
-    const dealer = state.dealer;
-
-    for (let p: Player = 0 as Player; p < 4; p = ((p + 1) % 4) as Player) {
-      state.playerHands.set(p, []);
-      for (let i = 0; i < 13; i++) {
-        const t = state.drawTile();
-        if (t !== null) state.playerHands.push(p, t);
-      }
-      state.sortHand(p);
-      if (p === (3 as Player)) break;
-    }
-
-    const firstDraw = state.drawTile();
-    if (firstDraw) {
-      state.playerHands.push(dealer, firstDraw);
-      state.sortHand(dealer);
-    }
-
-    const hand: Tile[] = [];
-    const pushN = (suit: Suit, number: number, count: number = 1) => {
-      for (let i = 0; i < count; i++) hand.push(new Tile(suit, number));
-    };
-    pushN('s', 1); pushN('s', 2); pushN('s', 3);
-    pushN('s', 4); pushN('s', 5); pushN('s', 6);
-    pushN('s', 7); pushN('s', 8); pushN('s', 9);
-    pushN('s', 2); pushN('s', 3); pushN('s', 4);
-    pushN('s', 5, 2);
-
-    state.playerHands.set(dealer, hand);
-    state.sortHand(dealer);
-    state.currentPlayer = dealer;
-  }
 }
