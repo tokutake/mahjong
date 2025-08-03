@@ -14,7 +14,6 @@ export class MahjongGame {
   ctx: CanvasRenderingContext2D;
   renderer: MahjongRenderer;
   inputMapper: InputMapper;
-  tiles: Tile[];
   playerHands: [Tile[], Tile[], Tile[], Tile[]];
   discardPiles: [Tile[], Tile[], Tile[], Tile[]];
   currentPlayer: Player;
@@ -38,7 +37,6 @@ export class MahjongGame {
     this.renderer = new MahjongRenderer(this.canvas);
     this.inputMapper = new InputMapper();
 
-    this.tiles = [];
     this.playerHands = [[], [], [], []];
     this.discardPiles = [[], [], [], []];
     this.currentPlayer = 0 as Player;
@@ -182,12 +180,6 @@ export class MahjongGame {
       if (curEl) curEl.textContent = '東';
 
       this.initGame();
-    });
-
-    const sortBtn = document.getElementById('sort-hand');
-    sortBtn?.addEventListener('click', () => {
-      this.sortHand(0 as Player);
-      this.draw();
     });
   }
 
