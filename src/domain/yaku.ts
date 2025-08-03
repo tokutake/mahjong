@@ -41,7 +41,29 @@ function y_sortTiles(tiles: Tile[]): Tile[] {
   });
 }
 
-export const YAKU_LIST = {
+export type YakuName =
+  | '国士無双'
+  | '七対子'
+  | '平和'
+  | '断么九'
+  | '一盃口'
+  | '一気通貫'
+  | '混一色'
+  | '清一色'
+  | '対々和'
+  | '三暗刻'
+  | '三色同順'
+  | '役牌';
+
+export type YakuInfo = {
+  han?: number;
+  yakuman?: boolean;
+  menzenOnly?: boolean;
+};
+
+export type YakuList = Record<YakuName | string, YakuInfo>;
+
+export const YAKU_LIST: YakuList = {
   '国士無双': { han: 13, yakuman: true },
   '七対子': { han: 2 },
   '平和': { han: 1, menzenOnly: true },
@@ -76,7 +98,7 @@ function y_hasYakuhai(tiles: Tile[]): boolean {
 }
 
 // 国士無双
-function y_checkKokushi(tiles: Tile[]): { ok: boolean; yaku?: ('国士無双')[] } {
+function y_checkKokushi(tiles: Tile[]): { ok: boolean; yaku?: YakuName[] } {
   const cnt = new Map<string, number>();
   for (const t of tiles) {
     const k = y_tileKey(t);
@@ -102,7 +124,7 @@ function y_checkKokushi(tiles: Tile[]): { ok: boolean; yaku?: ('国士無双')[]
 }
 
 // 七対子
-function y_checkChiitoi(tiles: Tile[]): { ok: boolean; yaku?: ('七対子')[] } {
+function y_checkChiitoi(tiles: Tile[]): { ok: boolean; yaku?: YakuName[] } {
   if (tiles.length !== 14) return { ok: false };
   const cnt = y_countByKey(tiles);
   if (cnt.size !== 7) return { ok: false };
@@ -280,23 +302,23 @@ function y_isChinitsu(tiles: Tile[]): boolean {
   return suits.size === 1 && !hasHonor && tiles.length > 0;
 }
 
-export function calcYaku(tiles: { suit: 'm' | 'p' | 's' | 'z'; number: number }[]): { yaku: string[]; han: number; yakuman: boolean } {
+export function calcYaku(tiles: { suit: 'm' | 'p' | 's' | 'z'; number: number }[]): { yaku: YakuName[]; han: number; yakuman: boolean } {
   const hand = y_sortTiles(tiles as any);
  
   const kokushi = y_checkKokushi(hand as any);
   if (kokushi.ok && kokushi.yaku) {
     const names = kokushi.yaku.slice();
-    const hanK = names.reduce((a, y) => a + (YAKU_LIST[y as keyof typeof YAKU_LIST].han || 0), 0);
+    const hanK = names.reduce((a, y) => a + (YAKU_LIST[y]?.han || 0), 0);
     return { yaku: names, han: hanK, yakuman: true };
   }
  
   const chiitoi = y_checkChiitoi(hand as any);
   if (chiitoi.ok && chiitoi.yaku) {
-    const list = chiitoi.yaku.slice() as string[];
+    const list = chiitoi.yaku.slice() as YakuName[];
     if (y_allSimples(hand as any)) list.push('断么九');
     if (y_isChinitsu(hand as any)) list.push('清一色');
     else if (y_isHonitsu(hand as any)) list.push('混一色');
-    const han = list.reduce((a, y) => a + (YAKU_LIST[y as keyof typeof YAKU_LIST]?.han || 0), 0);
+    const han = list.reduce((a, y) => a + (YAKU_LIST[y]?.han || 0), 0);
     return { yaku: list, han, yakuman: false };
   }
  
@@ -306,7 +328,7 @@ export function calcYaku(tiles: { suit: 'm' | 'p' | 's' | 'z'; number: number }[
   }
   const groups = decomp.groups;
 
-  const yaku: string[] = [];
+  const yaku: YakuName[] = [];
   if (y_isPinfu(groups as any, hand as any)) yaku.push('平和');
   if (y_allSimples(hand as any)) yaku.push('断么九');
   if (y_isIipeikou(groups as any, hand as any)) yaku.push('一盃口');
@@ -318,7 +340,7 @@ export function calcYaku(tiles: { suit: 'm' | 'p' | 's' | 'z'; number: number }[
   else if (y_isHonitsu(hand as any)) yaku.push('混一色');
   if (y_hasYakuhai(hand as any)) yaku.push('役牌');
  
-  const han = yaku.reduce((a, name) => a + (YAKU_LIST[name as keyof typeof YAKU_LIST]?.han || 0), 0);
-  const hasYakuman = yaku.some((n) => (YAKU_LIST[n as keyof typeof YAKU_LIST] as { han?: number; yakuman?: boolean })?.yakuman === true);
+  const han = yaku.reduce((a, name) => a + (YAKU_LIST[name]?.han || 0), 0);
+  const hasYakuman = yaku.some((n) => (YAKU_LIST[n]?.yakuman === true));
   return { yaku, han, yakuman: hasYakuman };
 }

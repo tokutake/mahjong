@@ -1,7 +1,7 @@
 import type { Tile } from '../domain/tile';
 import type { Player } from './inputMapper';
-import { InputMapper } from './inputMapper';
 
+import type { YakuList } from '../domain/yaku';
 export type CalcYakuResult = { yaku: string[]; han: number; yakuman: boolean };
 export type HitRect = { x: number; y: number; w: number; h: number; player: Player };
 
@@ -85,7 +85,7 @@ export class MahjongRenderer {
     this.ctx.fillText(`現在のプレイヤー: ${playerNames[currentPlayer]}`, 20, 50);
   }
 
-  drawYaku(result: CalcYakuResult, yakuList?: Record<string, { han?: number; yakuman?: boolean }>): void {
+  drawYaku(result: CalcYakuResult, yakuList?: YakuList): void {
     this.ctx.fillStyle = '#000';
     this.ctx.font = '16px Arial';
     this.ctx.textAlign = 'left';

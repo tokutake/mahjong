@@ -4,12 +4,13 @@ import { Wall } from '../domain/wall';
 import { InputMapper, type HitRect, type Player } from '../ui/inputMapper';
 import { MahjongRenderer, type CalcYakuResult } from '../ui/renderer';
 import { DebugPreloadedHands } from '../debug/DebugPreloadedHands';
+import type { YakuList } from '../domain/yaku';
 
 export type CalcYakuFn = (tiles: Tile[]) => CalcYakuResult;
 
 export class MahjongGame {
   calcYaku: CalcYakuFn;
-  yakuList?: Record<string, { han?: number; yakuman?: boolean }>;
+  yakuList?: YakuList;
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   renderer: MahjongRenderer;
@@ -17,12 +18,11 @@ export class MahjongGame {
   playerHands: [Tile[], Tile[], Tile[], Tile[]];
   discardPiles: [Tile[], Tile[], Tile[], Tile[]];
   currentPlayer: Player;
-  selectedTile: Tile | null;
   wall: Wall;
   hitMap: Map<number, HitRect>;
   debugPreloadedYaku: boolean;
 
-  constructor(opts: { calcYaku: CalcYakuFn; yakuList: Record<string, { han?: number; yakuman?: boolean }> }) {
+  constructor(opts: { calcYaku: CalcYakuFn; yakuList: YakuList }) {
     this.calcYaku = opts.calcYaku;
     this.yakuList = opts.yakuList;
 
@@ -40,7 +40,6 @@ export class MahjongGame {
     this.playerHands = [[], [], [], []];
     this.discardPiles = [[], [], [], []];
     this.currentPlayer = 0 as Player;
-    this.selectedTile = null;
     this.wall = new Wall();
 
     this.hitMap = new Map();
