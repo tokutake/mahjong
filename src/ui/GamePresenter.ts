@@ -1,7 +1,7 @@
 import { InputMapper, type HitRect, type Player } from './inputMapper';
 import { MahjongRenderer, type CalcYakuResult } from './renderer';
 import { Tile } from '../domain/tile';
-import { YAKU_LIST } from '../domain/yaku';
+import { calcYaku } from '../domain/yaku';
 import {
   applyAction,
   canDiscard,
@@ -18,12 +18,9 @@ export class GamePresenter {
   private renderer: MahjongRenderer;
   private inputMapper: InputMapper;
   private state: GameState;
-  private calcYaku: CalcYakuFn;
   private aiTimer: number | null = null;
 
-  constructor(opts: { calcYaku: CalcYakuFn; debugPreloadedYaku?: boolean }) {
-    this.calcYaku = opts.calcYaku;
-
+  constructor(opts: { debugPreloadedYaku?: boolean }) {
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
     if (!canvas) throw new Error('canvas #game-canvas not found');
     this.canvas = canvas;
@@ -62,7 +59,7 @@ export class GamePresenter {
     // yaku
     const hand = this.state.playerHands.get(0 as Player);
     if (hand && hand.length === 14) {
-      const result: CalcYakuResult = this.calcYaku(hand);
+      const result: CalcYakuResult = calcYaku(hand);
       this.renderer.drawYaku(result);
     }
 

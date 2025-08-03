@@ -5,10 +5,9 @@ import { GamePresenter, type CalcYakuFn } from '../ui/GamePresenter';
 export class MahjongGame {
   private presenter: GamePresenter;
 
-  constructor(opts: { calcYaku: CalcYakuFn }) {
+  constructor(opts: { }) {
     this.presenter = new GamePresenter({
-      calcYaku: opts.calcYaku,
-      debugPreloadedYaku: true,
+      debugPreloadedYaku: true
     });
   }
 }
