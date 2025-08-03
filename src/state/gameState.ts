@@ -1,5 +1,4 @@
 import { Tile, type Suit } from '../domain/tile';
-import { InputMapper } from '../ui/inputMapper';
 export type Player = 0 | 1 | 2 | 3;
 
 export type HitRect = { x: number; y: number; w: number; h: number; player: Player };
@@ -28,10 +27,6 @@ export class GameState {
   currentPlayer: Player = 0;
   selectedTile: Tile | null = null;
 
-  // 入力
-  hitMap: Map<number, HitRect> = new Map();
-  private inputMapper = new InputMapper();
-
   // デバッグ
   debugPreloadedYaku = true;
 
@@ -44,7 +39,6 @@ export class GameState {
     this.wall = new Wall();
     this.currentPlayer = this.dealer;
     this.selectedTile = null;
-    this.hitMap = new Map();
 
     if (this.debugPreloadedYaku) {
       // Adapt state to DebugPreloadedHands expected domain types
