@@ -130,39 +130,6 @@ export class GameState {
     this.inputMapper.setHitRegions(hitMap);
     this.inputMapper.setPriority(priorityIds);
   }
-
-  pickTileId(x: number, y: number, forPlayer: Player): number | null {
-    return this.inputMapper.pick(x, y, (id) => {
-      const r = this.hitMap.get(id);
-      if (!r) return false;
-      if (r.player !== forPlayer) return false;
-      return this.playerHands[forPlayer].length === 14;
-    });
-  }
-
-  listActiveDora(): Tile[] {
-    return this.wall.listActiveDora();
-  }
-
-  isExhaustiveDraw(): boolean {
-    return this.wall.isExhaustiveDraw();
-  }
-
-  getDoraIndicators(): Tile[] {
-    return this.wall.getDoraIndicators();
-  }
-
-  getWallRemainingCount(): number {
-    return this.wall.getRemainingCount();
-  }
-
-  getWallIndex(): number {
-    return this.wall.getWallIndex();
-  }
-
-  getTotalWallLength(): number {
-    return this.wall.getTotalWallLength();
-  }
 }
 
 export type { Player as PlayerType };
