@@ -123,6 +123,7 @@ export function applyAction(state: GameState, action: Action): GameState {
     }
     case 'DrawSelf': {
       if (state.currentPlayer !== action.player) return state;
+      if (state.wall.getRemainingCount() <= 0) return state; // Exhaustive draw
       const t = state.wall.drawTile();
       if (t) {
         state.playerHands.push(action.player, t);
@@ -138,6 +139,7 @@ export function applyAction(state: GameState, action: Action): GameState {
       // one simple AI step: draw then discard random one
       if (state.currentPlayer === (0 as Player)) return state;
 
+      if (state.wall.getRemainingCount() <= 0) return state; // Exhaustive draw
       const drawn = state.wall.drawTile();
       if (drawn) {
         state.playerHands.push(state.currentPlayer, drawn);
