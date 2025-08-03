@@ -1,7 +1,7 @@
 import { InputMapper, type HitRect, type Player } from './inputMapper';
 import { MahjongRenderer, type CalcYakuResult } from './renderer';
 import { Tile } from '../domain/tile';
-import type { YakuList } from '../domain/yaku';
+import { YAKU_LIST } from '../domain/yaku';
 import {
   applyAction,
   canDiscard,
@@ -19,12 +19,10 @@ export class GamePresenter {
   private inputMapper: InputMapper;
   private state: GameState;
   private calcYaku: CalcYakuFn;
-  private yakuList?: YakuList;
   private aiTimer: number | null = null;
 
-  constructor(opts: { calcYaku: CalcYakuFn; yakuList: YakuList; debugPreloadedYaku?: boolean }) {
+  constructor(opts: { calcYaku: CalcYakuFn; debugPreloadedYaku?: boolean }) {
     this.calcYaku = opts.calcYaku;
-    this.yakuList = opts.yakuList;
 
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
     if (!canvas) throw new Error('canvas #game-canvas not found');
@@ -64,8 +62,8 @@ export class GamePresenter {
     // yaku
     const hand = this.state.playerHands.get(0 as Player);
     if (hand && hand.length === 14) {
-      const result: CalcYakuResult = this.calcYaku ? this.calcYaku(hand) : { yaku: [], han: 0, yakuman: false };
-      this.renderer.drawYaku(result, this.yakuList);
+      const result: CalcYakuResult = this.calcYaku(hand);
+      this.renderer.drawYaku(result);
     }
 
     // input mapper hit regions

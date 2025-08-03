@@ -1,5 +1,3 @@
-import type { YakuList } from '../domain/yaku';
-import { MahjongRenderer, type CalcYakuResult } from '../ui/renderer';
 import { GamePresenter, type CalcYakuFn } from '../ui/GamePresenter';
 
 // Backward-compatible thin wrapper to preserve external API while migrating to Presenter.
@@ -7,10 +5,9 @@ import { GamePresenter, type CalcYakuFn } from '../ui/GamePresenter';
 export class MahjongGame {
   private presenter: GamePresenter;
 
-  constructor(opts: { calcYaku: CalcYakuFn; yakuList: YakuList }) {
+  constructor(opts: { calcYaku: CalcYakuFn }) {
     this.presenter = new GamePresenter({
       calcYaku: opts.calcYaku,
-      yakuList: opts.yakuList,
       debugPreloadedYaku: true,
     });
   }
