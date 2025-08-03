@@ -125,6 +125,8 @@ export class GamePresenter {
         this.setState(next);
         // After AI step, if player 0's turn, draw one tile automatically (to mimic previous behavior)
         if (next.currentPlayer === (0 as Player)) {
+          const hand0 = next.playerHands.get(0 as Player);
+          if (!hand0 || hand0.length >= 14) return; // no need to draw if hand is already full
           const afterDraw = applyAction(next, { type: 'DrawSelf', player: 0 as Player });
           this.setState(afterDraw);
         }
