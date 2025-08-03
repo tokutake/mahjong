@@ -106,4 +106,19 @@ export class MahjongRenderer {
     }
     this.ctx.fillText(`合計: ${result.yakuman ? '役満' : result.han + '翻'}`, baseX, y + 6);
   }
+
+  drawScores(scores: number[]): void {
+    this.ctx.fillStyle = '#000';
+    this.ctx.font = '16px Arial';
+    this.ctx.textAlign = 'left';
+    
+    const baseX = 20;
+    let y = 80; // 現在のプレイヤー表示の下
+    
+    [0, 1, 2, 3].forEach((player, index) => {
+      const score = scores[index];
+      this.ctx.fillText(`プレイヤー${player}: ${score}点`, baseX, y);
+      y += 20; // 各プレイヤーの点数を縦に20px間隔で表示
+    });
+  }
 }

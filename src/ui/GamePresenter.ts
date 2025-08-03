@@ -63,6 +63,9 @@ export class GamePresenter {
       this.renderer.drawYaku(result);
     }
 
+    // scores
+    this.renderer.drawScores(this.state.scores);
+
     // input mapper hit regions
     this.inputMapper.setHitRegions(this.renderer.hitMap);
     const handIds = getHandWithFixedDraw(this.state, 0 as Player).map(t => t.id);

@@ -16,6 +16,7 @@ export type GameState = {
   round: number; // 0-3: E, 4-7: S
   honba: number; // number of dealer repeats
   kyotaku: number; // riichi sticks
+  scores: number[]; // 各プレイヤーの点数 [東, 南, 西, 北]
 };
 
 export type InitAction = { type: 'Init'; debugPreloadedYaku?: boolean };
@@ -73,6 +74,7 @@ export function initGame(debugPreloadedYaku = true): GameState {
     round: 0,
     honba: 0,
     kyotaku: 0,
+    scores: [25000, 25000, 25000, 25000], // 初期点数25000点で各プレイヤーを初期化
   };
 
   if (debugPreloadedYaku) {
