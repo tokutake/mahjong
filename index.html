@@ -22,8 +22,8 @@
         </div>
     </div>
     <script type="module">
-      import { MahjongGame } from './mahjong.ts';
-      import { calcYaku, YAKU_LIST } from './yaku.ts';
+      import { MahjongGame } from '@/mahjong.ts';
+      import { calcYaku, YAKU_LIST } from '@/domain/yaku.ts';
       // 役判定関数と役一覧をDIしてゲームを初期化
       // 画面描画が行われるように、DOMContentLoaded後にインスタンス化
       window.addEventListener('DOMContentLoaded', () => {
