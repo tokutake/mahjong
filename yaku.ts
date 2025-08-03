@@ -322,5 +322,3 @@ export function calcYaku(tiles: { suit: 'm' | 'p' | 's' | 'z'; number: number }[
   const hasYakuman = yaku.some((n) => (YAKU_LIST[n as keyof typeof YAKU_LIST] as { han?: number; yakuman?: boolean })?.yakuman === true);
   return { yaku, han, yakuman: hasYakuman };
 }
-
-/* ESM化に伴い、グローバル公開は不要（main.js側で必要ならwindowへ束ねる） */
