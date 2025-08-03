@@ -39,26 +39,54 @@ export class Tile {
   }
 
   toString(): string {
-    const names = {
-      m: '萬子',
-      p: '筒子',
-      s: '索子',
-      z: '字牌'
-    } as const;
-
-    if (this.suit === 'z') {
-      const honors = ['東', '南', '西', '北', '白', '發', '中'] as const;
-      const zihaiString = honors[this.number - 1];
-      if (!zihaiString) {
-        throw new Error(`Invalid honor tile number: ${this.number}`);
-      }
-      return zihaiString;
-    }
-
-    return `${this.number}${names[this.suit]}`;
+    return `${this.suit}${this.number}`;
   }
 
   equals(other: Tile): boolean {
     return this.suit === other.suit && this.number === other.number;
+  }
+
+  isNumber(): boolean {
+    return this.type === 'number';
+  }
+
+  static sort(a: Tile, b: Tile): number {
+    if (a.suit !== b.suit) {
+      return a.suit.localeCompare(b.suit);
+    }
+    return a.number - b.number;
+  }
+
+  static fromString(str: string): Tile {
+    const suitChar = str.charAt(0);
+    const numberChar = str.charAt(1);
+
+    let suit: Suit;
+    let number: number;
+
+    switch (suitChar) {
+      case 'm':
+        suit = 'm';
+        break;
+      case 'p':
+        suit = 'p';
+        break;
+      case 's':
+        suit = 's';
+        break;
+      case 'z':
+        suit = 'z';
+        break;
+      default:
+        throw new Error(`Invalid suit character: ${suitChar}`);
+    }
+
+    number = parseInt(numberChar, 10);
+
+    if (isNaN(number)) {
+      throw new Error(`Invalid number character: ${numberChar}`);
+    }
+
+    return new Tile(suit, number);
   }
 }
