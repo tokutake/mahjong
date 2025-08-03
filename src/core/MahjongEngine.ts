@@ -148,7 +148,7 @@ export function applyAction(state: GameState, action: Action): GameState {
     case 'NextRound': {
       const dealer = (state.round % 4) as Player;
       const dealerHand = state.playerHands.get(dealer);
-      const dealerTenpai = isTenpai(dealerHand).isTenpai;
+      const dealerTenpai = isTenpai(dealerHand);
 
       let nextRound = state.round;
       let nextHonba = state.honba;
@@ -171,7 +171,9 @@ export function applyAction(state: GameState, action: Action): GameState {
       // one simple AI step: draw then discard random one
       if (state.currentPlayer === (0 as Player)) return state;
 
-      if (state.wall.getRemainingCount() <= 0) return state; // Exhaustive draw
+      if (state.wall.getRemainingCount() <= 0) {
+        return applyAction(state, { type: 'NextRound' });
+      }
       const drawn = state.wall.drawTile();
       if (drawn) {
         state.playerHands.push(state.currentPlayer, drawn);
