@@ -2,6 +2,8 @@ import { Tile } from '../domain/tile';
 import { Wall } from '../domain/wall';
 import { PlayerHands } from '../domain/playerHands';
 import type { Player } from '../ui/inputMapper';
+import { isTenpai } from '../domain/tenpai';
+
 import { DebugPreloadedHands } from '../debug/DebugPreloadedHands';
 
 export type DiscardPiles = [Tile[], Tile[], Tile[], Tile[]];
@@ -12,6 +14,9 @@ export type GameState = {
   discardPiles: DiscardPiles;
   currentPlayer: Player;
   debugPreloadedYaku: boolean;
+  round: number; // 0-3: E, 4-7: S
+  honba: number; // number of dealer repeats
+  kyotaku: number; // riichi sticks
 };
 
 export type InitAction = { type: 'Init'; debugPreloadedYaku?: boolean };
@@ -19,8 +24,9 @@ export type DiscardAction = { type: 'Discard'; player: Player; tileIndex: number
 export type DrawSelfAction = { type: 'DrawSelf'; player: Player };
 export type NextPlayerAction = { type: 'NextPlayer' };
 export type AiStepAction = { type: 'AiStep' };
+export type NextRoundAction = { type: 'NextRound' };
 
-export type Action = InitAction | DiscardAction | DrawSelfAction | NextPlayerAction | AiStepAction;
+export type Action = InitAction | DiscardAction | DrawSelfAction | NextPlayerAction | AiStepAction | NextRoundAction;
 
 // Pure selectors/utilities
 export function getHandWithFixedDraw(state: GameState, player: Player): Tile[] {
@@ -65,6 +71,9 @@ export function initGame(debugPreloadedYaku = true): GameState {
     discardPiles,
     currentPlayer,
     debugPreloadedYaku,
+    round: 0,
+    honba: 0,
+    kyotaku: 0,
   };
 
   if (debugPreloadedYaku) {
@@ -123,7 +132,9 @@ export function applyAction(state: GameState, action: Action): GameState {
     }
     case 'DrawSelf': {
       if (state.currentPlayer !== action.player) return state;
-      if (state.wall.getRemainingCount() <= 0) return state; // Exhaustive draw
+      if (state.wall.getRemainingCount() <= 0) {
+        return applyAction(state, { type: 'NextRound' });
+      }
       const t = state.wall.drawTile();
       if (t) {
         state.playerHands.push(action.player, t);
@@ -134,6 +145,28 @@ export function applyAction(state: GameState, action: Action): GameState {
     case 'NextPlayer': {
       state.currentPlayer = ((state.currentPlayer + 1) % 4) as Player;
       return state;
+    }
+    case 'NextRound': {
+      const dealer = (state.round % 4) as Player;
+      const dealerHand = state.playerHands.get(dealer);
+      const dealerTenpai = isTenpai(dealerHand).isTenpai;
+
+      let nextRound = state.round;
+      let nextHonba = state.honba;
+
+      if (dealerTenpai) {
+        nextHonba++;
+      } else {
+        nextRound++;
+        nextHonba = 0;
+      }
+
+      const newState = initGame(state.debugPreloadedYaku);
+      newState.round = nextRound;
+      newState.honba = nextHonba;
+      newState.kyotaku = state.kyotaku;
+
+      return newState;
     }
     case 'AiStep': {
       // one simple AI step: draw then discard random one
