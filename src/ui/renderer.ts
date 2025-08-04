@@ -52,25 +52,45 @@ export class MahjongRenderer {
     const centerX = this.canvas.width / 2;
     const centerY = this.canvas.height / 2;
 
+    // レイアウト: それぞれ6列ごとに改行
+    const cols = 6;
+    const w = 20;
+    const h = 25;
+    const gap = 5;
+
+    // 各プレイヤの捨て牌エリアの原点
+    const positions = [
+      { x: centerX - 150, y: centerY + 100 }, // あなた（東）
+      { x: centerX - 200, y: centerY - 100 }, // 南
+      { x: centerX - 150, y: centerY - 200 }, // 西
+      { x: centerX + 100, y: centerY - 100 }  // 北
+    ] as const;
+
     const players: Player[] = [0, 1, 2, 3];
     players.forEach(player => {
       const pile = discardPiles[player] || [];
-      const positions = [
-        { x: centerX - 150, y: centerY + 100 },
-        { x: centerX - 200, y: centerY - 100 },
-        { x: centerX - 150, y: centerY - 200 },
-        { x: centerX + 100, y: centerY - 100 }
-      ] as const;
+      pile.forEach((tile, index) => {
+        const base = positions[player]!;
+        const col = index % cols;
+        const row = Math.floor(index / cols);
+        const tileX = base.x + col * (w + gap);
+        const tileY = base.y + row * (h + gap);
 
-      pile.forEach((_, index) => {
-        const pos = positions[player]!;
-        const tileX = pos.x + (index % 6) * 25;
-        const tileY = pos.y + Math.floor(index / 6) * 25;
+        // 牌のベース
+        this.ctx.fillStyle = '#FFF8DC';
+        this.ctx.fillRect(tileX, tileY, w, h);
+        this.ctx.strokeStyle = '#8B4513';
+        this.ctx.lineWidth = 1.5;
+        this.ctx.strokeRect(tileX, tileY, w, h);
 
-        this.ctx.fillStyle = '#F0F0F0';
-        this.ctx.fillRect(tileX, tileY, 20, 25);
-        this.ctx.strokeStyle = '#666';
-        this.ctx.strokeRect(tileX, tileY, 20, 25);
+        // 実牌表現（Unicodeで代用）
+        // 小さめのフォントで中央寄せ
+        this.ctx.fillStyle = '#000';
+        this.ctx.font = '16px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        // 牌ごとに unicode を描画
+        this.ctx.fillText(tile.unicode, tileX + w / 2, tileY + h / 2 + 1);
       });
     });
   }
