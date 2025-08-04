@@ -218,10 +218,13 @@ export function applyAction(state: GameState, action: Action): GameState {
         nextHonba = 0;
       }
 
+      const scores = state.scores;
+
       const newState = initGame(state.debugPreloadedYaku);
       newState.round = nextRound;
       newState.honba = nextHonba;
       newState.kyotaku = state.kyotaku;
+      newState.scores = scores;
 
       return newState;
     }
