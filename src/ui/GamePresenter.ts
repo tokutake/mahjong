@@ -19,6 +19,7 @@ export class GamePresenter {
   private inputMapper: InputMapper;
   private state: GameState;
   private aiTimer: number | null = null;
+  private winButtonEl: HTMLButtonElement | null = null;
 
   constructor(opts: { debugPreloadedYaku?: boolean }) {
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
@@ -71,6 +72,9 @@ export class GamePresenter {
     const handIds = getHandWithFixedDraw(this.state, 0 as Player).map(t => t.id);
     this.inputMapper.setPriority(handIds.slice().reverse());
 
+    // Show/Hide Tsumo (Win) button only when a winning hand with yaku is present
+    this.updateWinButtonVisibility();
+
     // DOM texts
     const remainEl = document.getElementById('remaining-tiles');
     if (remainEl) remainEl.textContent = String(remainingTiles(this.state));
@@ -105,6 +109,17 @@ export class GamePresenter {
       const next = initGame(true);
       this.setState(next);
     });
+
+    // Tsumo (Win) button
+    this.winButtonEl = document.getElementById('win-button') as HTMLButtonElement | null;
+    this.winButtonEl?.addEventListener('click', () => {
+      // 和了ボタン押下時の処理
+      const hand0 = this.state.playerHands.get(0 as Player);
+      if (!hand0 || hand0.length !== 14) return;
+      // 和了アクションを適用（エンジン内で役チェック・点数精算・次局へ遷移）
+      const next = applyAction(this.state, { type: 'Tsumo', player: 0 as Player });
+      this.setState(next);
+    });
   }
 
   private handleTileIdClick(clickedId: number): void {
@@ -135,5 +150,25 @@ export class GamePresenter {
         }
       }, 10);
     }
+  }
+
+  // 和了ボタンの可視性制御：自摸直後などで手牌14枚かつ役ありの時だけ表示
+  private updateWinButtonVisibility(): void {
+    if (!this.winButtonEl) {
+      this.winButtonEl = document.getElementById('win-button') as HTMLButtonElement | null;
+    }
+    if (!this.winButtonEl) return;
+
+    const hand0 = this.state.playerHands.get(0 as Player);
+    if (!hand0 || hand0.length !== 14) {
+      this.winButtonEl.style.display = 'none';
+      return;
+    }
+    // 役判定（calcYaku は役がないと yaku:[]/han:0 を返す）
+    const result: CalcYakuResult = calcYaku(hand0);
+    const hasYaku = result && (result.yakuman || result.han > 0 || (result.yaku?.length ?? 0) > 0);
+
+    // さらに、エンジン側の canWin を使った待ち形チェックは Tsumo 内で最終確認するためここでは簡易チェック
+    this.winButtonEl.style.display = hasYaku ? 'inline-block' : 'none';
   }
 }

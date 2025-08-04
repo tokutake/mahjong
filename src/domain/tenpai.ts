@@ -7,6 +7,22 @@ import { calcYaku } from './yaku';
  * @param hand A 13-tile hand.
  * @returns An object with `isTenpai` boolean and a `waits` array of tiles that complete the hand.
  */
+
+/**
+ * Checks if a 13-tile hand can win with a given winning tile.
+ * @param hand A 13-tile hand.
+ * @param winTile The winning tile.
+ * @returns True if the hand can win with the given tile, false otherwise.
+ */
+export function canWin(hand: Tile[], winTile: Tile): boolean {
+  if (hand.length !== 13) {
+    return false;
+  }
+
+  const potentialHand = [...hand, winTile];
+  const result = calcYaku(potentialHand);
+  return result.yaku.length > 0;
+}
 export function isTenpai(hand: Tile[]): { isTenpai: boolean; waits: Tile[] } {
   if (hand.length !== 13) {
     return { isTenpai: false, waits: [] };

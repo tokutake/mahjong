@@ -2,7 +2,9 @@ import { Tile } from '../domain/tile';
 import { Wall } from '../domain/wall';
 import { PlayerHands } from '../domain/playerHands';
 import type { Player } from '../ui/inputMapper';
-import { isTenpai } from '../domain/tenpai';
+import { isTenpai, canWin } from '../domain/tenpai';
+import { calcYaku } from '../domain/yaku';
+import { calcScore } from '../domain/score';
 
 import { DebugPreloadedHands } from '../debug/DebugPreloadedHands';
 export type DiscardPiles = [Tile[], Tile[], Tile[], Tile[]];
@@ -22,11 +24,12 @@ export type GameState = {
 export type InitAction = { type: 'Init'; debugPreloadedYaku?: boolean };
 export type DiscardAction = { type: 'Discard'; player: Player; tileIndex: number };
 export type DrawSelfAction = { type: 'DrawSelf'; player: Player };
+export type TsumoAction = { type: 'Tsumo'; player: Player };
 export type NextPlayerAction = { type: 'NextPlayer' };
 export type AiStepAction = { type: 'AiStep' };
 export type NextRoundAction = { type: 'NextRound' };
 
-export type Action = InitAction | DiscardAction | DrawSelfAction | NextPlayerAction | AiStepAction | NextRoundAction;
+export type Action = InitAction | DiscardAction | DrawSelfAction | TsumoAction | NextPlayerAction | AiStepAction | NextRoundAction;
 
 // Pure selectors/utilities
 export function getHandWithFixedDraw(state: GameState, player: Player): Tile[] {
@@ -140,6 +143,59 @@ export function applyAction(state: GameState, action: Action): GameState {
       if (t) {
         state.playerHands.push(action.player, t);
         state.playerHands.sort(action.player);
+      }
+      return state;
+    }
+    case 'Tsumo': {
+      // ツモ和了の処理
+      const player = action.player;
+      const hand = state.playerHands.get(player);
+      if (!hand || hand.length !== 14) return state; // 14牌でなければ和了できない
+
+      const winTile = hand[hand.length - 1]; // 最後の牌がツモ牌
+      if (!winTile) return state;
+
+      if (hand.length >= 14 && canWin(hand.slice(0, 13), winTile)) {
+        // 和了成立
+        // 役と点数を計算
+        // hand is confirmed non-undefined and has at least 14 tiles here
+        const yakuResult = calcYaku(hand);
+        const score = calcScore({
+          tiles: hand,
+          yakuResult,
+          dealer: player === (state.round % 4) as Player, // 親かどうか
+          winType: 'tsumo',
+        });
+        if (!score) return state;
+
+        // スコアを更新
+        const points = score.totalPoints;
+        const payments = score.payments ?? undefined;
+
+        if (player === (state.round % 4) as Player) {
+          // 親ツモ
+          for (let i = 0; i < 4; i++) {
+            if (i !== player) {
+              state.scores[i]! -= Math.floor(points / 3);
+            }
+          }
+          state.scores[player]! += points;
+        } else {
+          // 子ツモ
+          const dealerPlayer = (state.round % 4) as Player;
+          if (payments) {
+            state.scores[dealerPlayer]! -= payments.tsumoParent ?? 0;
+            for (let i = 0; i < 4; i++) {
+              if (i !== player && i !== dealerPlayer) {
+                state.scores[i]! -= payments.tsumoChild ?? 0;
+              }
+            }
+          }
+          state.scores[player]! += points;
+        }
+
+        // 次の局に移る
+        return applyAction(state, { type: 'NextRound' });
       }
       return state;
     }
