@@ -229,25 +229,110 @@ export function applyAction(state: GameState, action: Action): GameState {
       return newState;
     }
     case 'AiStep': {
-      // one simple AI step: draw then discard random one
+      // Minimal AI: draw, then discard a tile that does not worsen shanten if possible.
+      // Tie-break: prefer discards that keep tenpai or increase simple uke (approx).
       if (state.currentPlayer === (0 as Player)) return state;
 
       if (state.wall.getRemainingCount() <= 0) {
         return applyAction(state, { type: 'NextRound' });
       }
+
       const drawn = state.wall.drawTile();
       if (drawn) {
         state.playerHands.push(state.currentPlayer, drawn);
         state.playerHands.sort(state.currentPlayer);
-        const len = state.playerHands.length(state.currentPlayer);
-        if (len > 0) {
+
+        const handCur = state.playerHands.get(state.currentPlayer);
+        const len = handCur.length;
+
+        // Safety check: AI should have 14 tiles after draw
+        if (len === 14) {
+          // Baseline: whether the 13-tile hand (remove the drawn) is in tenpai
+          const base13 = handCur.slice(0, 13);
+          const baseTenpai = isTenpai(base13);
+
+          // Evaluate each discard candidate by index
+          type Cand = { idx: number; keepTenpai: boolean; ukeScore: number };
+          const candidates: Cand[] = [];
+          for (let i = 0; i < len; i++) {
+            // simulate discarding handCur[i]
+            const after = handCur.slice();
+            after.splice(i, 1); // 13 tiles after discard
+
+            // If 13 tiles after discard are tenpai, it's good. Otherwise less preferred.
+            const ten = isTenpai(after);
+
+            // Simple uke approximation: count number of distinct waits
+            const ukeScore = ten.isTenpai ? ten.waits.length : 0;
+
+            candidates.push({
+              idx: i,
+              keepTenpai: ten.isTenpai || (!baseTenpai.isTenpai && !ten.isTenpai), // do not worsen: both not tenpai also ok
+              ukeScore,
+            });
+          }
+
+          // Filter: prefer not worsening from base state.
+          let pool = candidates.filter(c => c.keepTenpai);
+
+          // If base was tenpai, keep only those that remain tenpai
+          if (baseTenpai.isTenpai) {
+            pool = candidates.filter(c => {
+              const after = handCur.slice();
+              after.splice(c.idx, 1);
+              return isTenpai(after).isTenpai;
+            });
+          }
+
+          // If nothing satisfies keepTenpai policy, fall back to all candidates
+          if (pool.length === 0) pool = candidates;
+
+          // Prefer higher ukeScore
+          let best = pool[0]!;
+          for (let k = 1; k < pool.length; k++) {
+            const c = pool[k]!;
+            if (c.ukeScore > best.ukeScore) best = c;
+          }
+
+          // If multiple with same ukeScore, choose earliest occurrence of redundant honor/safe-ish tile heuristically.
+          const bestUke = best.ukeScore;
+          const ties = pool.filter(c => c.ukeScore === bestUke);
+
+          let chosen = ties[0]!;
+          if (ties.length > 1) {
+            // crude heuristic: prefer discarding honors or isolated terminals
+            const isHonor = (t: Tile) => t.suit === 'z';
+            const isTerminal = (t: Tile) => (t.suit !== 'z' && (t.number === 1 || t.number === 9));
+            const isolatedScore = (idx: number) => {
+              const t = handCur[idx]!;
+              let score = 0;
+              if (isHonor(t)) score += 2;
+              if (isTerminal(t)) score += 1;
+              return score;
+            };
+            let bestIso = isolatedScore(ties[0]!.idx);
+            chosen = ties[0]!;
+            for (let k = 1; k < ties.length; k++) {
+              const sc = isolatedScore(ties[k]!.idx);
+              if (sc > bestIso) {
+                bestIso = sc;
+                chosen = ties[k]!;
+              }
+            }
+          }
+
+          const discardedTile = handCur[chosen.idx]!;
+          state.playerHands.popAt(state.currentPlayer, chosen.idx);
+          state.discardPiles[state.currentPlayer].push(discardedTile as Tile);
+        } else if (len > 0) {
+          // Fallback: if for any reason not 14, keep previous random behavior
           const idx = Math.floor(Math.random() * len);
-          const handCur = state.playerHands.get(state.currentPlayer);
           const discardedTile = handCur[idx]!;
           state.playerHands.popAt(state.currentPlayer, idx);
           state.discardPiles[state.currentPlayer].push(discardedTile as Tile);
         }
       }
+
       state.currentPlayer = ((state.currentPlayer + 1) % 4) as Player;
       return state;
     }
